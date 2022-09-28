@@ -1,0 +1,22 @@
+{
+  "name": "gyzstwo-pm-ws",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidverbeek/gyzstwo-pm-ws.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/davidverbeek/gyzstwo-pm-ws/issues"
+  },
+  "homepage": "https://github.com/davidverbeek/gyzstwo-pm-ws#readme",
+  "dependencies": {
+    "express": "^4.18.1"
+  }
+}
