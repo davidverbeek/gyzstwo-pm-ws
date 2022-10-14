@@ -1,0 +1,6 @@
+# dependencies
+/node_modules
+
+# db
+dbconfig.js
+
