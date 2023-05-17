@@ -10,29 +10,79 @@ class productPriceService {
     }
 
     getDataCount(connection, request, resultsCallback) {
-        const SQL = this.buildSql(request,"show");
+        const SQL = this.buildSql(request, "show");
         connection.query(SQL, (error, results) => {
             resultsCallback(results[0]["TOTAL_RECORDS"]);
         });
     }
 
+    savePriceData(connection, request, resultsCallback) {
+        const chunk_size = 1000;
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
 
-    buildSql(request,totalrecords="") {
+        //const chunkLength = chunks;
+        //console.log(chunkLength.length);
+
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+
+            var update_bulk_sql = "UPDATE price_management_data SET ";
+            var col_sp = "selling_price = (CASE ";
+            var col_pp = "profit_percentage = (CASE ";
+            var col_ppsp = "profit_percentage_selling_price = (CASE ";
+            var col_dgp = "discount_on_gross_price = (CASE ";
+            var col_pi = "percentage_increase = (CASE ";
+            var col_iu = "is_updated = (CASE ";
+            var updateArray = [];
+            
+            for (const chunk_data in value) {
+                const actual_data = value[chunk_data];
+                //console.log(chunk_key, actual_data.product_id);
+                col_sp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.selling_price+"'";
+                col_pp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.profit_percentage+"'";
+                col_ppsp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.profit_percentage_selling_price+"'";
+                col_dgp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.discount_on_gross_price+"'";
+                col_pi += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.percentage_increase+"'";
+                col_iu += "WHEN product_id = '"+actual_data.product_id+"' THEN '1'";
+                updateArray.push(actual_data.product_id);
+            }
+
+            col_sp += " END)";
+            col_pp += " END)";
+            col_ppsp += " END)";
+            col_dgp += " END)";
+            col_pi += " END)";
+            col_iu += " END)";
+            //create_case_statement_for_price += " END";
+            var get_all_products_to_update = updateArray.join(",");
+            update_bulk_sql += col_sp+', '+col_pp+', '+col_ppsp+', '+col_dgp+', '+col_pi+', '+col_iu+' WHERE product_id IN ('+get_all_products_to_update+')';
+            connection.query(update_bulk_sql);
+            //console.log(update_bulk_sql);
+        }
+
+        // const arr = Array.from({length: Math.ceil(request.length / chunk_size)});
+        // console.table(arr);
+        //console.log(request);
+        resultsCallback("wow");
+    }
+
+
+    buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
         var category_join = "";
-        if((request.cats).length > 0) {
+        if ((request.cats).length > 0) {
             category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = pmd.product_id "
         }
-        const fromSql = " FROM price_management_data AS pmd "+category_join+"";
+        const fromSql = " FROM price_management_data AS pmd " + category_join + "";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
         const orderBySql = this.createOrderBySql(request);
         const groupBySql = this.createGroupBySql(request);
 
-        if(totalrecords == "show") {
-            var SQLCOUNT = this.buildsqlcount(fromSql,whereSql);
+        if (totalrecords == "show") {
+            var SQLCOUNT = this.buildsqlcount(fromSql, whereSql);
             console.log(SQLCOUNT);
             return SQLCOUNT;
         } else {
@@ -42,9 +92,9 @@ class productPriceService {
         }
     }
 
-    buildsqlcount(fromSql,whereSql) {
+    buildsqlcount(fromSql, whereSql) {
         var countsql = "";
-        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS "+fromSql+" "+whereSql+"";
+        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
     createSelectSql(request) {
@@ -64,19 +114,19 @@ class productPriceService {
 
             return ' select ' + colsToSelect.join(', ');
         }
-        return ' select pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status ';
+        return ' select pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated';
     }
 
     createFilterSql(key, item) {
-       // console.log(key);
-       // console.log(item);
+        // console.log(key);
+        // console.log(item);
         switch (item.filterType) {
             case 'text':
                 return this.createTextFilterSql(key, item);
             case 'number':
                 return this.createNumberFilterSql(key, item);
             case 'set':
-                return this.createSetFilterSql(key, item);    
+                return this.createSetFilterSql(key, item);
             default:
                 console.log('unkonwn filter type: ' + item.filterType);
         }
@@ -84,11 +134,11 @@ class productPriceService {
 
     createSetFilterSql(key, item) {
         var allValues = (item.values).join('","');
-        return key + ' IN ("' + allValues + '")';    
+        return key + ' IN ("' + allValues + '")';
     }
 
     createNumberFilterSql(key, item) {
-        console.log(key+"==="+item.type);
+        console.log(key + "===" + item.type);
         switch (item.type) {
             case 'equals':
                 return key + ' = ' + item.filter;
@@ -155,25 +205,25 @@ class productPriceService {
         }
 
         var cat_filter = "";
-        if((request.cats).length > 0) {
-            cat_filter = 'pmcp.category_id IN ('+request.cats+')';
-        } 
+        if ((request.cats).length > 0) {
+            cat_filter = 'pmcp.category_id IN (' + request.cats + ')';
+        }
 
         if (whereParts.length > 0) {
-            if(cat_filter == "") {
+            if (cat_filter == "") {
                 return ' where ' + whereParts.join(' and ') + '';
             } else {
-                return ' where ' + whereParts.join(' and ') + ' and '+cat_filter+'';
+                return ' where ' + whereParts.join(' and ') + ' and ' + cat_filter + '';
             }
         } else {
-            if(cat_filter == "") {
+            if (cat_filter == "") {
                 return '';
             } else {
-                return 'where pmcp.category_id IN ('+request.cats+')';
+                return 'where pmcp.category_id IN (' + request.cats + ')';
             }
         }
 
-        
+
     }
 
     createGroupBySql(request) {

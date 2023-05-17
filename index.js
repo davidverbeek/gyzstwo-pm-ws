@@ -57,6 +57,12 @@ app.post('/pm-products', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/save-products', bodyParser.json(), function (req, res) {
+  productPriceService.savePriceData(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
 app.get('/all-categories', bodyParser.json(), function (req, res) {
   connection.query("SELECT id,pid,name FROM price_management_ctree", (err, rows, fields) => {
     if (err) {
