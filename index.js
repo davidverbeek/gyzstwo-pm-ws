@@ -15,6 +15,10 @@ app.use(cors());
 
 const bodyParser = require("body-parser");
 var jwt = require('jsonwebtoken');
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true, parameterLimit: 50000 }));
+
+
 
 dbconfig = require("./dbconfig");
 const mysql = require('mysql')
@@ -47,18 +51,25 @@ app.post('/auth', bodyParser.json(), (req, res) => {
 })
 
 app.post('/pm-products', bodyParser.json(), function (req, res) {
-  productPriceService.getData(connection, req.body, (rows, lastRow) => {
+  productPriceService.getData(connection, req.body, (rows, lastRow, currentSql) => {
     productPriceService.getDataCount(connection, req.body, (recordCount) => {
       if(lastRow == "-1") {
         lastRow = recordCount;
       }
-      res.json({ rows: rows, lastRow: lastRow });
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
     })  
   });
 });
 
 app.post('/save-products', bodyParser.json(), function (req, res) {
   productPriceService.savePriceData(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
+app.post('/all-products', bodyParser.text(), function (req, res) {
+  console.log(req.body);
+  productPriceService.getAllProducts(connection, req.body, (msg) => {
     res.json({ msg });
   });
 });

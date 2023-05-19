@@ -5,7 +5,8 @@ class productPriceService {
         connection.query(SQL, (error, results) => {
             const rowCount = this.getRowCount(request, results);
             const resultsForPage = this.cutResultsToPageSize(request, results);
-            resultsCallback(resultsForPage, rowCount);
+            const currentSql = SQL;
+            resultsCallback(resultsForPage, rowCount, currentSql);
         });
     }
 
@@ -14,6 +15,12 @@ class productPriceService {
         connection.query(SQL, (error, results) => {
             resultsCallback(results[0]["TOTAL_RECORDS"]);
         });
+    }
+
+    getAllProducts(connection, request, resultsCallback) {
+        connection.query(request, (error, results) => {
+            resultsCallback(results);
+        }); 
     }
 
     savePriceData(connection, request, resultsCallback) {
@@ -57,13 +64,13 @@ class productPriceService {
             var get_all_products_to_update = updateArray.join(",");
             update_bulk_sql += col_sp+', '+col_pp+', '+col_ppsp+', '+col_dgp+', '+col_pi+', '+col_iu+' WHERE product_id IN ('+get_all_products_to_update+')';
             connection.query(update_bulk_sql);
-            //console.log(update_bulk_sql);
+            console.log(update_bulk_sql);
         }
 
         // const arr = Array.from({length: Math.ceil(request.length / chunk_size)});
         // console.table(arr);
         //console.log(request);
-        resultsCallback("wow");
+        resultsCallback("done");
     }
 
 
