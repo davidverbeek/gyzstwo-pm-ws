@@ -34,12 +34,12 @@ var productPriceService = require('./services/productPriceService');
 
 app.post('/auth', bodyParser.json(), (req, res) => {
   // res.json(req.body);
-  connection.query('SELECT count(*) AS count_user FROM users WHERE username = "' + req.body.username + '" AND password = "' + req.body.password + '"', (err, rows, fields) => {
+  connection.query('SELECT count(*) AS count_user, page_access FROM users WHERE username = "' + req.body.username + '" AND password = "' + req.body.password + '"', (err, rows, fields) => {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
       if (rows[0].count_user == 1) {
-        var token = jwt.sign({ username: req.body.username }, 'my_secret');
+        var token = jwt.sign({username: req.body.user_name, page_access: rows[0].page_access}, 'my_secret');
         return res.status(200).json({token:token});
       } else {
         return res.status(501).json({ message: "Invalid user" });
@@ -82,4 +82,14 @@ app.get('/all-categories', bodyParser.json(), function (req, res) {
       return res.status(200).json({categories:rows});
     }
   })
+});
+
+app.post('/verifytoken', bodyParser.json(), (req, res) => {
+  jwt.verify(req.body.token,"my_secret",function(err,tokendata) {
+    if(err) {
+      res.status(400).json({message: "Unauthorized request"});
+    } else {
+      res.status(200).json(tokendata);
+    }
+  });
 });
