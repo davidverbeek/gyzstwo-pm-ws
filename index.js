@@ -68,9 +68,14 @@ app.post('/save-products', bodyParser.json(), function (req, res) {
 });
 
 app.post('/all-products', bodyParser.text(), function (req, res) {
-  console.log(req.body);
   productPriceService.getAllProducts(connection, req.body, (msg) => {
     res.json({ msg });
+  });
+});
+
+app.get('/all-debtors', bodyParser.json(), function (req, res) {
+  productPriceService.getAllDebtors(connection, req.body, (msg) => {
+    res.send({ msg });
   });
 });
 

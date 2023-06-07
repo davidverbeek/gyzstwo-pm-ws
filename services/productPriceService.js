@@ -20,10 +20,18 @@ class productPriceService {
     getAllProducts(connection, request, resultsCallback) {
         connection.query(request, (error, results) => {
             resultsCallback(results);
-        }); 
+        });
+    }
+
+    getAllDebtors(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_customer_groups ORDER BY sort_order ASC";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
     }
 
     savePriceData(connection, request, resultsCallback) {
+        
         const chunk_size = 1000;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
 
@@ -40,17 +48,44 @@ class productPriceService {
             var col_dgp = "discount_on_gross_price = (CASE ";
             var col_pi = "percentage_increase = (CASE ";
             var col_iu = "is_updated = (CASE ";
+
+            var col_debid = "";
+            var col_debsp = "";
+            var col_debpp = "";
+            var col_debppsp = "";
+            var col_debdgp = "";
+            var col_debiu = "";
+
+            var col_final_debid = "";
+            var col_final_debsp = "";
+            var col_final_debpp = "";
+            var col_final_debppsp = "";
+            var col_final_debdgp = "";
+            var col_final_debiu = "";
+
+            var debtor_number = "no";
+
             var updateArray = [];
-            
+
             for (const chunk_data in value) {
                 const actual_data = value[chunk_data];
-                //console.log(chunk_key, actual_data.product_id);
-                col_sp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.selling_price+"'";
-                col_pp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.profit_percentage+"'";
-                col_ppsp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.profit_percentage_selling_price+"'";
-                col_dgp += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.discount_on_gross_price+"'";
-                col_pi += "WHEN product_id = '"+actual_data.product_id+"' THEN '"+actual_data.percentage_increase+"'";
-                col_iu += "WHEN product_id = '"+actual_data.product_id+"' THEN '1'";
+
+                if (typeof actual_data["debtor"] != "undefined") {
+                    debtor_number = actual_data["debtor"];
+                    col_debid += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["debtor_id"] + "'";
+                    col_debsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_debter_selling_price"] + "'";
+                    col_debpp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_buying_price"] + "'";
+                    col_debppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_selling_price"] + "'";
+                    col_debdgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price"] + "'";
+                    col_debiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                } else {
+                    col_sp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.selling_price + "'";
+                    col_pp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage + "'";
+                    col_ppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage_selling_price + "'";
+                    col_dgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.discount_on_gross_price + "'";
+                    col_pi += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.percentage_increase + "'";
+                    col_iu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                }
                 updateArray.push(actual_data.product_id);
             }
 
@@ -62,9 +97,22 @@ class productPriceService {
             col_iu += " END)";
             //create_case_statement_for_price += " END";
             var get_all_products_to_update = updateArray.join(",");
-            update_bulk_sql += col_sp+', '+col_pp+', '+col_ppsp+', '+col_dgp+', '+col_pi+', '+col_iu+' WHERE product_id IN ('+get_all_products_to_update+')';
-            connection.query(update_bulk_sql);
+
+            if (debtor_number != "no") { //If debtors
+                var col_final_debid = "group_"+debtor_number+"_magento_id = (CASE "+col_debid+" END)";
+                var col_final_debsp = "group_"+debtor_number+"_debter_selling_price = (CASE "+col_debsp+" END)";
+                var col_final_debpp = "group_"+debtor_number+"_margin_on_buying_price = (CASE "+col_debpp+" END)";
+                var col_final_debppsp = "group_"+debtor_number+"_margin_on_selling_price = (CASE "+col_debppsp+" END)";
+                var col_final_debdgp = "group_"+debtor_number+"_discount_on_grossprice_b_on_deb_selling_price = (CASE "+col_debdgp+" END)";
+                var col_final_debiu = "is_updated = (CASE "+col_debiu+" END)";
+                update_bulk_sql += col_final_debid + ', ' + col_final_debsp + ', ' + col_final_debpp + ', ' + col_final_debppsp + ', ' + col_final_debdgp + ', ' + col_final_debiu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+            } else {
+                update_bulk_sql += col_sp + ', ' + col_pp + ', ' + col_ppsp + ', ' + col_dgp + ', ' + col_pi + ', ' + col_iu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+            }
+
             console.log(update_bulk_sql);
+            
+            connection.query(update_bulk_sql);
         }
 
         // const arr = Array.from({length: Math.ceil(request.length / chunk_size)});
@@ -90,11 +138,9 @@ class productPriceService {
 
         if (totalrecords == "show") {
             var SQLCOUNT = this.buildsqlcount(fromSql, whereSql);
-            console.log(SQLCOUNT);
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
-            console.log(SQL);
             return SQL;
         }
     }
@@ -121,7 +167,18 @@ class productPriceService {
 
             return ' select ' + colsToSelect.join(', ');
         }
-        return ' select pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated';
+
+        const all_d_cols = [];
+        for (let d = 0; d <= 15; d++) {
+            var cust_group = parseInt(4027100 + d);
+            all_d_cols.push("pmd.group_" + cust_group + "_debter_selling_price",
+                "pmd.group_" + cust_group + "_margin_on_buying_price",
+                "pmd.group_" + cust_group + "_margin_on_selling_price",
+                "pmd.group_" + cust_group + "_discount_on_grossprice_b_on_deb_selling_price");
+        }
+
+
+        return ' select pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, ' + all_d_cols.toString() + '';
     }
 
     createFilterSql(key, item) {
@@ -204,7 +261,6 @@ class productPriceService {
 
         if (filterModel) {
             const keySet = Object.keys(filterModel);
-            console.log(keySet);
             keySet.forEach(function (key) {
                 const item = filterModel[key];
                 whereParts.push(that.createFilterSql(key, item));
