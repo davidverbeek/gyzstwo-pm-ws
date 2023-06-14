@@ -31,6 +31,7 @@ const connection = mysql.createConnection({
 connection.connect()
 
 var productPriceService = require('./services/productPriceService');
+var productPriceHistoryService = require('./services/productPriceHistoryService');
 
 app.post('/auth', bodyParser.json(), (req, res) => {
   // res.json(req.body);
@@ -96,5 +97,16 @@ app.post('/verifytoken', bodyParser.json(), (req, res) => {
     } else {
       res.status(200).json(tokendata);
     }
+  });
+});
+
+app.post('/pm-products-history', bodyParser.json(), function (req, res) {
+  productPriceHistoryService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    productPriceHistoryService.getDataCount(connection, req.body, (recordCount) => {
+      if(lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })  
   });
 });
