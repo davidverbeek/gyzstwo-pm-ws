@@ -31,7 +31,7 @@ class productPriceService {
     }
 
     savePriceData(connection, request, resultsCallback) {
-        
+
         const chunk_size = 1000;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
 
@@ -88,7 +88,7 @@ class productPriceService {
                     col_iu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
 
 
-                    historyString += "('"+actual_data.product_id+"','"+actual_data.webshop_net_unit_price+"','"+actual_data.webshop_gross_unit_price+"','"+actual_data.webshop_idealeverpakking+"','"+actual_data.webshop_afwijkenidealeverpakking+"','"+actual_data.webshop_buying_price+"','"+actual_data.webshop_selling_price+"','"+actual_data.buying_price+"','"+actual_data.gross_unit_price+"','"+actual_data.idealeverpakking+"','"+actual_data.afwijkenidealeverpakking+"','"+actual_data.buying_price+"','"+actual_data.selling_price+"',now(),'Price Management','No','"+JSON.stringify(Array('new_selling_price'))+"','0','No'),";
+                    historyString += "('" + actual_data.product_id + "','" + actual_data.webshop_net_unit_price + "','" + actual_data.webshop_gross_unit_price + "','" + actual_data.webshop_idealeverpakking + "','" + actual_data.webshop_afwijkenidealeverpakking + "','" + actual_data.webshop_buying_price + "','" + actual_data.webshop_selling_price + "','" + actual_data.buying_price + "','" + actual_data.gross_unit_price + "','" + actual_data.idealeverpakking + "','" + actual_data.afwijkenidealeverpakking + "','" + actual_data.buying_price + "','" + actual_data.selling_price + "',now(),'Price Management','No','" + JSON.stringify(Array('new_selling_price')) + "','0','No'),";
                 }
                 updateArray.push(actual_data.product_id);
             }
@@ -105,27 +105,27 @@ class productPriceService {
             var get_all_products_to_update = updateArray.join(",");
 
             if (debtor_number != "no") { //If debtors
-                var col_final_debid = "group_"+debtor_number+"_magento_id = (CASE "+col_debid+" END)";
-                var col_final_debsp = "group_"+debtor_number+"_debter_selling_price = (CASE "+col_debsp+" END)";
-                var col_final_debpp = "group_"+debtor_number+"_margin_on_buying_price = (CASE "+col_debpp+" END)";
-                var col_final_debppsp = "group_"+debtor_number+"_margin_on_selling_price = (CASE "+col_debppsp+" END)";
-                var col_final_debdgp = "group_"+debtor_number+"_discount_on_grossprice_b_on_deb_selling_price = (CASE "+col_debdgp+" END)";
-                var col_final_debiu = "is_updated = (CASE "+col_debiu+" END)";
+                var col_final_debid = "group_" + debtor_number + "_magento_id = (CASE " + col_debid + " END)";
+                var col_final_debsp = "group_" + debtor_number + "_debter_selling_price = (CASE " + col_debsp + " END)";
+                var col_final_debpp = "group_" + debtor_number + "_margin_on_buying_price = (CASE " + col_debpp + " END)";
+                var col_final_debppsp = "group_" + debtor_number + "_margin_on_selling_price = (CASE " + col_debppsp + " END)";
+                var col_final_debdgp = "group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price = (CASE " + col_debdgp + " END)";
+                var col_final_debiu = "is_updated = (CASE " + col_debiu + " END)";
                 update_bulk_sql += col_final_debid + ', ' + col_final_debsp + ', ' + col_final_debpp + ', ' + col_final_debppsp + ', ' + col_final_debdgp + ', ' + col_final_debiu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
             } else {
                 update_bulk_sql += col_sp + ', ' + col_pp + ', ' + col_ppsp + ', ' + col_dgp + ', ' + col_pi + ', ' + col_iu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
             }
 
             //console.log(update_bulk_sql);
-            
+
             //connection.query(update_bulk_sql);
 
             connection.query(update_bulk_sql, (error, results) => {
                 if (error) {
                     return console.error(error.message);
                 }
-                if (debtor_number == "no") { 
-                    connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES "+historyString+"");
+                if (debtor_number == "no") {
+                    connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES " + historyString + "");
                 }
             });
 
