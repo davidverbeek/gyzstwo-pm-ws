@@ -40,8 +40,8 @@ app.post('/auth', bodyParser.json(), (req, res) => {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
       if (rows[0].count_user == 1) {
-        var token = jwt.sign({username: req.body.user_name, page_access: rows[0].page_access}, 'my_secret');
-        return res.status(200).json({token:token});
+        var token = jwt.sign({ username: req.body.user_name, page_access: rows[0].page_access }, 'my_secret');
+        return res.status(200).json({ token: token });
       } else {
         return res.status(501).json({ message: "Invalid user" });
       }
@@ -54,11 +54,11 @@ app.post('/auth', bodyParser.json(), (req, res) => {
 app.post('/pm-products', bodyParser.json(), function (req, res) {
   productPriceService.getData(connection, req.body, (rows, lastRow, currentSql) => {
     productPriceService.getDataCount(connection, req.body, (recordCount) => {
-      if(lastRow == "-1") {
+      if (lastRow == "-1") {
         lastRow = recordCount;
       }
       res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
-    })  
+    })
   });
 });
 
@@ -80,20 +80,26 @@ app.get('/all-debtors', bodyParser.json(), function (req, res) {
   });
 });
 
+app.get('/activate-updated-products', bodyParser.json(), function (req, res) {
+  productPriceService.activateUpdatedProducts(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
 app.get('/all-categories', bodyParser.json(), function (req, res) {
   connection.query("SELECT id,pid,name FROM price_management_ctree", (err, rows, fields) => {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
-      return res.status(200).json({categories:rows});
+      return res.status(200).json({ categories: rows });
     }
   })
 });
 
 app.post('/verifytoken', bodyParser.json(), (req, res) => {
-  jwt.verify(req.body.token,"my_secret",function(err,tokendata) {
-    if(err) {
-      res.status(400).json({message: "Unauthorized request"});
+  jwt.verify(req.body.token, "my_secret", function (err, tokendata) {
+    if (err) {
+      res.status(400).json({ message: "Unauthorized request" });
     } else {
       res.status(200).json(tokendata);
     }
@@ -103,10 +109,10 @@ app.post('/verifytoken', bodyParser.json(), (req, res) => {
 app.post('/pm-products-history', bodyParser.json(), function (req, res) {
   productPriceHistoryService.getData(connection, req.body, (rows, lastRow, currentSql) => {
     productPriceHistoryService.getDataCount(connection, req.body, (recordCount) => {
-      if(lastRow == "-1") {
+      if (lastRow == "-1") {
         lastRow = recordCount;
       }
       res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
-    })  
+    })
   });
 });
