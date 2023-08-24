@@ -111,3 +111,38 @@ app.post('/pm-products-history', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
+  // console.log(req.body);
+  debterRuleFileService.insertDebterRules(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
+app.post('/catpro-products', bodyParser.json(), function (req, res) {
+  console.log(req.body);
+  connection.query("SELECT distinct product_id FROM price_management_catpro where category_id IN (" + req.body + ")", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ products_of_cats: rows });
+    }
+  })
+});
+
+app.post('/dbt-rules-cats', bodyParser.json(), function (req, res) {
+  // console.log(req);
+  debterRuleFileService.getData_debter_rules(connection, req.body, (err, rows) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ debter_cats: rows });
+    }
+  });
+});
+
+app.post('/dbt-rules-reset', bodyParser.json(), function (req, res) {
+  debterRuleFileService.resetDebterPrices(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+
+});
