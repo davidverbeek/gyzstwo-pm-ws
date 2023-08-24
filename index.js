@@ -67,6 +67,12 @@ app.post('/save-products', bodyParser.json(), function (req, res) {
     res.json({ msg });
   });
 });
+app.post('/upload-products', bodyParser.json(), function (req, res) {
+  productPriceService.uploadPriceData(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+
+});
 
 app.post('/all-products', bodyParser.text(), function (req, res) {
   productPriceService.getAllProducts(connection, req.body, (msg) => {
@@ -76,6 +82,12 @@ app.post('/all-products', bodyParser.text(), function (req, res) {
 
 app.get('/all-debtors', bodyParser.json(), function (req, res) {
   productPriceService.getAllDebtors(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
+app.post('/get-products-byskus', bodyParser.json(), function (req, res) {
+  productPriceService.getAllProductBySkus(connection, req.body, (msg) => {
     res.send({ msg });
   });
 });

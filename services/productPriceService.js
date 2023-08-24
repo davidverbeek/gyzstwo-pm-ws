@@ -29,6 +29,14 @@ class productPriceService {
             resultsCallback(results);
         });
     }
+
+    getAllProductBySkus(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_data WHERE sku IN (" + request + ")";
+        //console.log(SQL);
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
     activateUpdatedProducts(connection, request, resultsCallback) {
         const SQL = "UPDATE price_management_data SET is_activated = '1' WHERE is_updated = '1'";
         connection.query(SQL, (error, results) => {
@@ -149,6 +157,93 @@ class productPriceService {
         resultsCallback("done");
     }
 
+    uploadPriceData(connection, request, resultsCallback) {
+        const chunk_size = 1;
+        const chunks = Array.from({ length: Math.ceil(request[1].length / chunk_size) }).map(() => request[1].splice(0, chunk_size));
+        var allCols = request[0].split(",");
+
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+            var uploadData = "";
+            var chunkStatus = Array();
+            var sql = "INSERT INTO price_management_data (" + request[0] + ") VALUES ";
+            for (const chunk_data in value) {
+                uploadData += "(";
+                allCols.forEach((col) => {
+                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
+                });
+                uploadData = uploadData.replace(/,+$/, '');
+                uploadData += "),";
+            }
+            uploadData = uploadData.replace(/,+$/, '');
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE " + request[2] + "";
+
+            this.insertChunk(connection, chunk_key, sql).then((result) => {
+                var a_key = parseFloat(chunk_key) + parseFloat(1);
+                chunkStatus.push(result);
+                if (chunks.length == a_key) {
+                    resultsCallback(chunkStatus);
+                }
+
+            }).catch((error) => {
+                var a_key = parseFloat(chunk_key) + parseFloat(1);
+                chunkStatus.push(error);
+                if (chunks.length == a_key) {
+                    resultsCallback(chunkStatus);
+                }
+            });
+        }
+
+        // For History
+        if (request[3].length >= 1) {
+            const history_chunk_size = 1;
+            const history_chunks = Array.from({ length: Math.ceil(request[3].length / history_chunk_size) }).map(() => request[3].splice(0, history_chunk_size));
+            var historyCols = "product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed";
+            var allHistoryCols = historyCols.split(",");
+
+            for (const history_chunk_key in history_chunks) {
+                const history_value = history_chunks[history_chunk_key];
+                var uploadHistoryData = "";
+                var historySql = "INSERT INTO price_management_history (" + historyCols + ") VALUES ";
+
+                for (const history_chunk_data in history_value) {
+                    uploadHistoryData += "(";
+                    allHistoryCols.forEach((hisCol) => {
+                        uploadHistoryData += "'" + history_value[history_chunk_data][hisCol] + "'" + ",";
+                    });
+                    uploadHistoryData = uploadHistoryData.replace(/,+$/, '');
+                    uploadHistoryData += "),";
+                }
+
+                uploadHistoryData = uploadHistoryData.replace(/,+$/, '');
+                historySql += "" + uploadHistoryData + "";
+                connection.query(historySql, (error, results) => {
+                    if (error) {
+                        return console.error(error.message);
+                    }
+                });
+
+            }
+        }
+
+
+
+
+    }
+
+    insertChunk(connection, chunk_key, sql) {
+        return new Promise((resolve, reject) => {
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    //reject("Error in chunk " + chunk_key + ": " + error.message + "");
+                    reject("Error in chunk " + chunk_key + "");
+                } else {
+                    resolve("Success Chunk " + chunk_key + "");
+                }
+            });
+        });
+    }
+
 
     buildSql(request, totalrecords = "") {
 
@@ -207,7 +302,7 @@ class productPriceService {
         }
 
 
-        return ' select pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + '';
+        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + '';
     }
 
     createFilterSql(key, item) {
