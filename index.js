@@ -32,6 +32,7 @@ connection.connect()
 
 var productPriceService = require('./services/productPriceService');
 var productPriceHistoryService = require('./services/productPriceHistoryService');
+var debterRuleFileService = require('./services/debterRuleService');
 
 app.post('/auth', bodyParser.json(), (req, res) => {
   // res.json(req.body);
@@ -40,29 +41,28 @@ app.post('/auth', bodyParser.json(), (req, res) => {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
       if (rows[0].count_user == 1) {
-        var token = jwt.sign({username: req.body.user_name, page_access: rows[0].page_access}, 'my_secret');
-        return res.status(200).json({token:token});
+        var token = jwt.sign({ username: req.body.user_name, page_access: rows[0].page_access }, 'my_secret');
+        return res.status(200).json({ token: token });
       } else {
         return res.status(501).json({ message: "Invalid user" });
       }
     }
-    //console.log('The solution is: ', rows[0].solution)
-    //res.json(err);
   })
 })
 
 app.post('/pm-products', bodyParser.json(), function (req, res) {
   productPriceService.getData(connection, req.body, (rows, lastRow, currentSql) => {
     productPriceService.getDataCount(connection, req.body, (recordCount) => {
-      if(lastRow == "-1") {
+      if (lastRow == "-1") {
         lastRow = recordCount;
       }
       res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
-    })  
+    })
   });
 });
 
 app.post('/save-products', bodyParser.json(), function (req, res) {
+  //console.log(req.body);
   productPriceService.savePriceData(connection, req.body, (msg) => {
     res.json({ msg });
   });
@@ -85,15 +85,15 @@ app.get('/all-categories', bodyParser.json(), function (req, res) {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
-      return res.status(200).json({categories:rows});
+      return res.status(200).json({ categories: rows });
     }
   })
 });
 
 app.post('/verifytoken', bodyParser.json(), (req, res) => {
-  jwt.verify(req.body.token,"my_secret",function(err,tokendata) {
-    if(err) {
-      res.status(400).json({message: "Unauthorized request"});
+  jwt.verify(req.body.token, "my_secret", function (err, tokendata) {
+    if (err) {
+      res.status(400).json({ message: "Unauthorized request" });
     } else {
       res.status(200).json(tokendata);
     }
@@ -103,10 +103,46 @@ app.post('/verifytoken', bodyParser.json(), (req, res) => {
 app.post('/pm-products-history', bodyParser.json(), function (req, res) {
   productPriceHistoryService.getData(connection, req.body, (rows, lastRow, currentSql) => {
     productPriceHistoryService.getDataCount(connection, req.body, (recordCount) => {
-      if(lastRow == "-1") {
+      if (lastRow == "-1") {
         lastRow = recordCount;
       }
       res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
-    })  
+    })
   });
+});
+
+app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
+  // console.log(req.body);
+  debterRuleFileService.insertDebterRules(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
+app.post('/catpro-products', bodyParser.json(), function (req, res) {
+  console.log(req.body);
+  connection.query("SELECT distinct product_id FROM price_management_catpro where category_id IN (" + req.body + ")", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ products_of_cats: rows });
+    }
+  })
+});
+
+app.post('/dbt-rules-cats', bodyParser.json(), function (req, res) {
+  // console.log(req);
+  debterRuleFileService.getData_debter_rules(connection, req.body, (err, rows) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ debter_cats: rows });
+    }
+  });
+});
+
+app.post('/dbt-rules-reset', bodyParser.json(), function (req, res) {
+  debterRuleFileService.resetDebterPrices(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+
 });
