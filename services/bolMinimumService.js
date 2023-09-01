@@ -1,4 +1,4 @@
-class productPriceHistoryService {
+class bolMinimumService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
@@ -9,7 +9,6 @@ class productPriceHistoryService {
             const currentSql = SQL;
             resultsCallback(resultsForPage, rowCount, currentSql);
         });
-        connection.query("UPDATE price_management_history SET is_viewed = 'Yes' WHERE product_id = '" + request.historyPid + "'");
     }
 
     getDataCount(connection, request, resultsCallback) {
@@ -22,7 +21,8 @@ class productPriceHistoryService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-        const fromSql = " FROM price_management_history";
+
+        const fromSql = " FROM price_management_bol_minimum";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -61,7 +61,7 @@ class productPriceHistoryService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select date_format(updated_date_time,"%Y-%m-%d") AS updated_date_time, old_net_unit_price, old_gross_unit_price, old_idealeverpakking, old_afwijkenidealeverpakking, old_buying_price, old_selling_price, new_net_unit_price, new_gross_unit_price, new_idealeverpakking, new_afwijkenidealeverpakking, new_buying_price, new_selling_price, updated_by, is_viewed, fields_changed';
+        return ' select *';
     }
 
     createFilterSql(key, item) {
@@ -150,12 +150,10 @@ class productPriceHistoryService {
             });
         }
 
-        var history_filter = 'product_id = ' + request.historyPid + '';
-
         if (whereParts.length > 0) {
-            return ' where ' + whereParts.join(' and ') + ' and ' + history_filter + '';
+            return ' where ' + whereParts.join(' and ');
         } else {
-            return ' where product_id = ' + request.historyPid + '';
+            return '';
         }
     }
 
@@ -239,4 +237,4 @@ class productPriceHistoryService {
     }
 }
 
-module.exports = new productPriceHistoryService();
+module.exports = new bolMinimumService();

@@ -32,6 +32,8 @@ connection.connect()
 
 var productPriceService = require('./services/productPriceService');
 var productPriceHistoryService = require('./services/productPriceHistoryService');
+const bolCommissionService = require('./services/bolCommissionService')
+const bolMinimumService = require('./services/bolMinimumService')
 
 app.post('/auth', bodyParser.json(), (req, res) => {
   // res.json(req.body);
@@ -121,6 +123,28 @@ app.post('/verifytoken', bodyParser.json(), (req, res) => {
 app.post('/pm-products-history', bodyParser.json(), function (req, res) {
   productPriceHistoryService.getData(connection, req.body, (rows, lastRow, currentSql) => {
     productPriceHistoryService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
+app.post('/pm-bol-commission', bodyParser.json(), function (req, res) {
+  bolCommissionService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    bolCommissionService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
+app.post('/pm-bol-minimum', bodyParser.json(), function (req, res) {
+  bolMinimumService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    bolMinimumService.getDataCount(connection, req.body, (recordCount) => {
       if (lastRow == "-1") {
         lastRow = recordCount;
       }
