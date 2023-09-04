@@ -22,7 +22,7 @@ class bolMinimumService {
 
         const selectSql = this.createSelectSql(request);
 
-        const fromSql = " FROM price_management_bol_minimum";
+        const fromSql = " FROM price_management_bol_minimum AS pmbm LEFT JOIN price_management_ec_deliverytime AS pmecdtime ON pmecdtime.option_id = pmbm.ec_deliverytime LEFT JOIN price_management_ec_deliverytime_be AS pmecdtimebe ON pmecdtimebe.option_id = pmbm.ec_deliverytime_be";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -61,7 +61,7 @@ class bolMinimumService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select *';
+        return ' select pmbm.*, pmecdtime.option_value AS ec_deliverytime_text, pmecdtimebe.option_value AS ec_deliverytime_be_text';
     }
 
     createFilterSql(key, item) {
@@ -235,6 +235,59 @@ class bolMinimumService {
             return results;
         }
     }
+
+    getAllECDeliveryTimes(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_ec_deliverytime";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+    getAllECDeliveryTimesBE(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_ec_deliverytime_be";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
+    saveBolDeliveryTime(connection, request, resultsCallback) {
+        const chunk_size = 3;
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+        var allCols = ["product_id", "ec_deliverytime"];
+        //var totalUpdated = Array();
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+            var uploadData = "";
+            var chunkStatus = Array();
+            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime) VALUES ";
+            for (const chunk_data in value) {
+                uploadData += "(";
+                allCols.forEach((col) => {
+                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
+                });
+                uploadData = uploadData.replace(/,+$/, '');
+                uploadData += "),";
+            }
+            uploadData = uploadData.replace(/,+$/, '');
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime = VALUES(ec_deliverytime)";
+            //totalUpdated.push(value.length);
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    return console.error(error.message);
+                }
+
+            });
+        }
+
+        // Using reduce function to find the sum
+        /* let sum = totalUpdated.reduce(function (x, y) {
+            return x + y;
+        }, 0); */
+
+        resultsCallback("done");
+    }
+
+
+
 }
 
 module.exports = new bolMinimumService();

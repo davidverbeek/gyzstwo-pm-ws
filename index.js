@@ -73,8 +73,15 @@ app.post('/upload-products', bodyParser.json(), function (req, res) {
   productPriceService.uploadPriceData(connection, req.body, (msg) => {
     res.json({ msg });
   });
-
 });
+
+app.post('/save-bol-delivery-time', bodyParser.json(), function (req, res) {
+  bolMinimumService.saveBolDeliveryTime(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
+
 
 app.post('/all-products', bodyParser.text(), function (req, res) {
   productPriceService.getAllProducts(connection, req.body, (msg) => {
@@ -87,6 +94,19 @@ app.get('/all-debtors', bodyParser.json(), function (req, res) {
     res.send({ msg });
   });
 });
+
+app.get('/get-ec-deliverytimes', bodyParser.json(), function (req, res) {
+  bolMinimumService.getAllECDeliveryTimes(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
+app.get('/get-ec-deliverytimes-be', bodyParser.json(), function (req, res) {
+  bolMinimumService.getAllECDeliveryTimesBE(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
 
 app.post('/get-products-byskus', bodyParser.json(), function (req, res) {
   productPriceService.getAllProductBySkus(connection, req.body, (msg) => {
