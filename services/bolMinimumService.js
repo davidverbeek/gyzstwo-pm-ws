@@ -253,13 +253,13 @@ class bolMinimumService {
     saveBolDeliveryTime(connection, request, resultsCallback) {
         const chunk_size = 3;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
-        var allCols = ["product_id", "ec_deliverytime"];
+        var allCols = ["product_id", "ec_deliverytime", "updated_date_time"];
         //var totalUpdated = Array();
         for (const chunk_key in chunks) {
             const value = chunks[chunk_key];
             var uploadData = "";
             var chunkStatus = Array();
-            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime) VALUES ";
+            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime,updated_date_time) VALUES ";
             for (const chunk_data in value) {
                 uploadData += "(";
                 allCols.forEach((col) => {
@@ -269,7 +269,8 @@ class bolMinimumService {
                 uploadData += "),";
             }
             uploadData = uploadData.replace(/,+$/, '');
-            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime = VALUES(ec_deliverytime)";
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime = VALUES(ec_deliverytime), updated_date_time = now()";
+            console.log(sql);
             //totalUpdated.push(value.length);
             connection.query(sql, (error, results) => {
                 if (error) {
