@@ -81,6 +81,15 @@ app.post('/save-bol-delivery-time', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/save-bol-delivery-time-be', bodyParser.json(), function (req, res) {
+  bolMinimumService.saveBolDeliveryTimeBE(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
+
+
+
 
 
 app.post('/all-products', bodyParser.text(), function (req, res) {

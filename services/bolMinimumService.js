@@ -34,7 +34,6 @@ class bolMinimumService {
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
-            console.log(SQL);
             return SQL;
         }
     }
@@ -270,7 +269,6 @@ class bolMinimumService {
             }
             uploadData = uploadData.replace(/,+$/, '');
             sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime = VALUES(ec_deliverytime), updated_date_time = now()";
-            console.log(sql);
             //totalUpdated.push(value.length);
             connection.query(sql, (error, results) => {
                 if (error) {
@@ -284,6 +282,37 @@ class bolMinimumService {
         /* let sum = totalUpdated.reduce(function (x, y) {
             return x + y;
         }, 0); */
+
+        resultsCallback("done");
+    }
+
+    saveBolDeliveryTimeBE(connection, request, resultsCallback) {
+        const chunk_size = 3;
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+        var allCols = ["product_id", "ec_deliverytime_be", "updated_date_time"];
+        //var totalUpdated = Array();
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+            var uploadData = "";
+            var chunkStatus = Array();
+            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime_be,updated_date_time) VALUES ";
+            for (const chunk_data in value) {
+                uploadData += "(";
+                allCols.forEach((col) => {
+                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
+                });
+                uploadData = uploadData.replace(/,+$/, '');
+                uploadData += "),";
+            }
+            uploadData = uploadData.replace(/,+$/, '');
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime_be = VALUES(ec_deliverytime_be), updated_date_time = now()";
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    return console.error(error.message);
+                }
+
+            });
+        }
 
         resultsCallback("done");
     }
