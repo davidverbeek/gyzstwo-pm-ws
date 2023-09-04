@@ -32,8 +32,10 @@ connection.connect()
 
 var productPriceService = require('./services/productPriceService');
 var productPriceHistoryService = require('./services/productPriceHistoryService');
-const bolCommissionService = require('./services/bolCommissionService')
-const bolMinimumService = require('./services/bolMinimumService')
+var bolCommissionService = require('./services/bolCommissionService');
+var bolMinimumService = require('./services/bolMinimumService');
+
+
 
 app.post('/auth', bodyParser.json(), (req, res) => {
   // res.json(req.body);
@@ -86,11 +88,6 @@ app.post('/save-bol-delivery-time-be', bodyParser.json(), function (req, res) {
     res.json({ msg });
   });
 });
-
-
-
-
-
 
 app.post('/all-products', bodyParser.text(), function (req, res) {
   productPriceService.getAllProducts(connection, req.body, (msg) => {
@@ -181,3 +178,24 @@ app.post('/pm-bol-minimum', bodyParser.json(), function (req, res) {
     })
   });
 });
+
+app.get('/get-settings', bodyParser.json(), function (req, res) {
+  connection.query("SELECT roas FROM pm_settings WHERE id = 1", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' });
+    } else {
+      return res.status(200).json({ settings: rows });
+    }
+  })
+});
+
+app.post('/set-settings', bodyParser.json(), function (req, res) {
+  connection.query("UPDATE pm_settings SET roas = '" + JSON.stringify(req.body) + "' WHERE id = 1", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' });
+    } else {
+      return res.status(200).json({ settings: rows });
+    }
+  })
+});
+
