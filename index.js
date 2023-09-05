@@ -1,4 +1,5 @@
 const express = require('express')
+const fs = require('fs');
 const app = express()
 const port = 3200
 
@@ -194,7 +195,11 @@ app.post('/set-settings', bodyParser.json(), function (req, res) {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
-      return res.status(200).json({ settings: rows });
+
+      fs.writeFile('/s.json', JSON.stringify(req.body), (err) => {
+        if (err) throw err;
+      });
+      return res.status(200).json({ settings: JSON.stringify(req.body) });
     }
   })
 });
