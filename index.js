@@ -35,6 +35,7 @@ var productPriceService = require('./services/productPriceService');
 var productPriceHistoryService = require('./services/productPriceHistoryService');
 var bolCommissionService = require('./services/bolCommissionService');
 var bolMinimumService = require('./services/bolMinimumService');
+var revenueService = require('./services/revenueService');
 
 
 
@@ -200,6 +201,37 @@ app.post('/set-settings', bodyParser.json(), function (req, res) {
         if (err) throw err;
       });
       return res.status(200).json({ settings: JSON.stringify(req.body) });
+    }
+  })
+});
+
+app.post('/pm-revenue', bodyParser.json(), function (req, res) {
+  revenueService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    revenueService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
+app.get('/get-pm-revenue', bodyParser.json(), function (req, res) {
+  connection.query("SELECT * FROM gyzsrevenuedata ORDER BY sku_vericale_som DESC LIMIT 1", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' });
+    } else {
+      return res.status(200).json({ revenueData: rows });
+    }
+  })
+});
+
+app.get('/get-pm-revenue-sum', bodyParser.json(), function (req, res) {
+  connection.query("SELECT SUM(sku_refund_revenue_amount) AS tot_refund_amount, SUM(sku_abs_margin) AS tot_abs_margin FROM gyzsrevenuedata", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' });
+    } else {
+      return res.status(200).json({ revenueSumData: rows });
     }
   })
 });
