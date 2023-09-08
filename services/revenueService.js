@@ -43,6 +43,12 @@ class revenueService {
         return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
+    getAllRevenue(connection, request, resultsCallback) {
+        connection.query(request, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
     createSelectSql(request) {
         const rowGroupCols = request.rowGroupCols;
         const valueCols = request.valueCols;

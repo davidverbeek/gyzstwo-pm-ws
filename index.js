@@ -97,6 +97,12 @@ app.post('/all-products', bodyParser.text(), function (req, res) {
   });
 });
 
+app.post('/all-revenue', bodyParser.text(), function (req, res) {
+  revenueService.getAllRevenue(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
 app.get('/all-debtors', bodyParser.json(), function (req, res) {
   productPriceService.getAllDebtors(connection, req.body, (msg) => {
     res.send({ msg });
