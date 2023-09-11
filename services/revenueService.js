@@ -67,7 +67,7 @@ class revenueService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select rd.*, pmd.supplier_type, pmd.name, pmd.merk';
+        return ' select DISTINCT rd.*, pmd.supplier_type, pmd.name, pmd.merk';
     }
 
     createFilterSql(key, item) {
