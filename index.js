@@ -36,6 +36,7 @@ var productPriceHistoryService = require('./services/productPriceHistoryService'
 var bolCommissionService = require('./services/bolCommissionService');
 var bolMinimumService = require('./services/bolMinimumService');
 var revenueService = require('./services/revenueService');
+var orderService = require('./services/orderService');
 
 
 
@@ -164,6 +165,19 @@ app.post('/pm-products-history', bodyParser.json(), function (req, res) {
     })
   });
 });
+
+app.post('/pm-order-history', bodyParser.json(), function (req, res) {
+  orderService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    orderService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
+
 
 app.post('/pm-bol-commission', bodyParser.json(), function (req, res) {
   bolCommissionService.getData(connection, req.body, (rows, lastRow, currentSql) => {
