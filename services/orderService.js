@@ -67,7 +67,7 @@ class orderService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select so.created_at AS created_at,soi.order_id AS order_id,soi.qty_ordered AS qty_ordered,soi.qty_refunded AS qty_refunded,soi.base_cost AS base_cost,soi.base_price AS base_price,(CASE soi.afwijkenidealeverpakking WHEN 0 THEN (soi.base_cost * soi.qty_ordered * soi.idealeverpakking)  ELSE (soi.base_cost * soi.qty_ordered) END) AS cost,(soi.base_price * soi.qty_ordered) AS price,((soi.base_price * soi.qty_ordered) - (CASE soi.afwijkenidealeverpakking WHEN 0 THEN (soi.base_cost * soi.qty_ordered * soi.idealeverpakking)  ELSE (soi.base_cost * soi.qty_ordered) END) ) AS absolute_margin,soi.afwijkenidealeverpakking AS afwijkenidealeverpakking,soi.idealeverpakking AS idealeverpakking';
+        return ' select so.state, so.created_at AS created_at,soi.order_id AS order_id,soi.qty_ordered AS qty_ordered,soi.qty_refunded AS qty_refunded,soi.base_cost AS base_cost,soi.base_price AS base_price,(CASE soi.afwijkenidealeverpakking WHEN 0 THEN (soi.base_cost * soi.qty_ordered * soi.idealeverpakking)  ELSE (soi.base_cost * soi.qty_ordered) END) AS cost,(soi.base_price * soi.qty_ordered) AS price,((soi.base_price * soi.qty_ordered) - (CASE soi.afwijkenidealeverpakking WHEN 0 THEN (soi.base_cost * soi.qty_ordered * soi.idealeverpakking)  ELSE (soi.base_cost * soi.qty_ordered) END) ) AS absolute_margin,soi.afwijkenidealeverpakking AS afwijkenidealeverpakking,soi.idealeverpakking AS idealeverpakking';
     }
 
     createFilterSql(key, item) {
