@@ -56,7 +56,6 @@ class debterRuleService {
 
     }
 
-
     buildSql(request, totalrecords = "") {
         const selectSql = this.createSelectSql(request);
         const fromSql = " FROM price_management_catpro AS catpro ";
@@ -95,26 +94,6 @@ class debterRuleService {
     }
 
 
-    insertDebterRulesHello(connection, request) {
-        //  console.log(request);
-        let nodeDate = require('date-and-time');
-        let now = nodeDate.format(new Date(), 'YYYY-MM-DD, HH:mm:ss');
-        var sql = "INSERT INTO price_management_debter_categories(category_ids,product_ids,customer_group, updated_at) VALUES ";
-        var all_col_data = "('" + request.category_ids + "', '" + request.product_ids + "','" + request.customer_group + "' ,'" + now + "')";
-        sql += all_col_data;
-        sql += " ON DUPLICATE KEY UPDATE category_ids = VALUES(category_ids), customer_group = VALUES(customer_group), product_ids = VALUES(product_ids), updated_at = VALUES(updated_at)";
-        connection.query(sql, (error) => {
-            if (error) {
-                // return console.error(error.message);
-            } else {
-                // resultsCallback('done');
-                //console.log("1 record inserted");
-            }
-
-        });
-        //return '';
-
-    }
     getData_debter_rules(connection, request, resultsCallback) {
         let SQL = "";
         if (request.debter_id.split(',').length == 1) {
@@ -189,7 +168,7 @@ class debterRuleService {
 
                 if (result[0]) {
                     new_cat_arr = result[0].category_ids;
-                    console.log(new_cat_arr);
+                    // console.log(new_cat_arr);
                     arr2 = new_cat_arr.split(',');
                     new_product_ids = result[0].product_ids;
                 }
@@ -202,7 +181,7 @@ class debterRuleService {
 
                 var SQL_2 = "select dc.category_ids, dc.product_ids, cg.customer_group_name, cg.magento_id from price_management_customer_groups as cg  LEFT JOIN  price_management_debter_categories AS dc ON dc.customer_group=cg.magento_id  WHERE cg.magento_id =" + request.destination_group_id;
                 connection.query(SQL_2, (err_2, result_2, destination_group) => {
-                    console.log(result_2);
+                    //console.log(result_2);
                     if (result_2.length) {
 
 
@@ -235,7 +214,6 @@ class debterRuleService {
             console.log("Description about Error: ", e.message);
         }
         resultsCallback("Data is copied and prices are reset successfully.");
-        // this.buildSql;
 
         //result is single row
         //console.log(result);
@@ -246,7 +224,7 @@ class debterRuleService {
      * function to get list of debtors "whose categories are copied from. It is a source debtor in copy-categories of debter rules" 
      * @param {*} connection
      * @param {*} request
-     * @param {*} resultsCallback
+     * @param {*} resultsCallbacks
      */
     getListCopyDebtors(connection, request, resultsCallback) {
         const SQL = "SELECT cg.magento_id, cg.group_alias FROM gyzs_admin_management.price_management_debter_categories dc JOIN price_management_customer_groups cg ON dc.customer_group=cg.magento_id ORDER BY cg.customer_group_name";
