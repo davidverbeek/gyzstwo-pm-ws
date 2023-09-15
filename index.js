@@ -273,8 +273,18 @@ app.post('/set-settings', bodyParser.json(), function (req, res) {
     roas_settings["employeecost_lower_bound"] = employeecost_lb;
     employeecost_ub[simpleFields["empcost_ov_ub_set_option"]] = simpleFields["empcost_ub_set_value"];
     roas_settings["employeecost_upper_bound"] = employeecost_ub;
+    roas_settings["avg_order_per_month"] = simpleFields["avg_order_per_month"];
+    roas_settings["payment_cost"] = simpleFields["payment_cost"];
+    roas_settings["other_company_cost"] = simpleFields["other_company_cost"];
+    roas_settings["individual_sku_percentage"] = simpleFields["individual_sku_percentage"];
+    roas_settings["category_brand_percentage"] = simpleFields["category_brand_percentage"];
+    roas_settings["sku_afzet_period"] = simpleFields["sku_afzet_period"];
 
-
+    if (simpleFields["excludeBol"] === true) {
+      roas_settings["excludeBol"] = 1;
+    } else {
+      roas_settings["excludeBol"] = 0;
+    }
   }
 
   const roasranges = undefined || {};
