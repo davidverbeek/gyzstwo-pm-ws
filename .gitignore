@@ -4,3 +4,6 @@
 # db
 dbconfig.js
 
+# log
+/logs
+

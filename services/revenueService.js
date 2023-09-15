@@ -4,6 +4,10 @@ class revenueService {
         const SQL = this.buildSql(request);
         //console.log(SQL);
         connection.query(SQL, (error, results) => {
+            if (error) {
+                //errorlogger.error(error.message);
+            }
+
             const rowCount = this.getRowCount(request, results);
             const resultsForPage = this.cutResultsToPageSize(request, results);
             const currentSql = SQL;

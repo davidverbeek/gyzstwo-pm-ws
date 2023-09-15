@@ -212,15 +212,103 @@ app.get('/get-settings', bodyParser.json(), function (req, res) {
 });
 
 app.post('/set-settings', bodyParser.json(), function (req, res) {
-  connection.query("UPDATE pm_settings SET roas = '" + JSON.stringify(req.body) + "' WHERE id = 1", (err, rows, fields) => {
+
+  var simpleFields = req.body[0];
+  var setroasFields = req.body[1];
+  var employeecostFields = req.body[2];
+
+
+  roas_settings = {};
+  roas_lb = {};
+  roas_ub = {};
+
+  employeecost_lb = {};
+  employeecost_ub = {};
+
+
+
+  shipment_revenue = {};
+
+  shipment_revenue["peak_order_value"] = {};
+  shipment_revenue["transmission"] = {};
+  shipment_revenue["transmission"]["transmission_shippment_revenue_less_then"] = {};
+  shipment_revenue["transmission"]["transmission_shippment_revenue_greater_then_or_equal"] = {};
+
+  shipment_revenue["other"] = {};
+  shipment_revenue["other"]["other_shippment_revenue_less_then"] = {};
+  shipment_revenue["other"]["other_shippment_revenue_greater_then_or_equal"] = {};
+
+
+  for (const fieldname in simpleFields) {
+    roas_settings["transmission_shipping_cost"] = simpleFields["transmission_shipping_cost"];
+    roas_settings["transmission_packing_cost"] = simpleFields["transmission_packing_cost"];
+    roas_settings["transmission_extra_return_shipment_cost"] = simpleFields["transmission_extra_return_shipment_cost"];
+    roas_settings["pakketpost_shipping_cost"] = simpleFields["pakketpost_shipping_cost"];
+    roas_settings["pakketpost_packing_cost"] = simpleFields["pakketpost_packing_cost"];
+    roas_settings["pakketpost_extra_return_shipment_cost"] = simpleFields["pakketpost_extra_return_shipment_cost"];
+    roas_settings["briefpost_shipping_cost"] = simpleFields["briefpost_shipping_cost"];
+    roas_settings["briefpost_packing_cost"] = simpleFields["briefpost_packing_cost"];
+    roas_settings["briefpost_extra_return_shipment_cost"] = simpleFields["briefpost_extra_return_shipment_cost"];
+    roas_settings["bol_commissions_auth_url"] = simpleFields["bol_commissions_auth_url"];
+    roas_settings["bol_client_id"] = simpleFields["bol_client_id"];
+    roas_settings["bol_secret"] = simpleFields["bol_secret"];
+    roas_settings["bol_commissions_api_url"] = simpleFields["bol_commissions_api_url"];
+    roas_settings["bol_buying_percentage"] = simpleFields["bol_buying_percentage"];
+    roas_settings["bol_return_from_date"] = simpleFields["bol_return_from_date"];
+    roas_settings["bol_return_to_date"] = simpleFields["bol_return_to_date"];
+
+    roas_lb[simpleFields["roasval_lb_set_option"]] = simpleFields["roasval_lb_set_value"];
+    roas_settings["roas_lower_bound"] = roas_lb;
+    roas_ub[simpleFields["roasval_ub_set_option"]] = simpleFields["roasval_ub_set_value"];
+    roas_settings["roas_upper_bound"] = roas_ub;
+
+    shipment_revenue["peak_order_value"] = simpleFields["shippment_revenue_order_value_peak"];
+    shipment_revenue["transmission"]["transmission_shippment_revenue_less_then"] = simpleFields["transmission_shippment_revenue_less_then"];
+    shipment_revenue["transmission"]["transmission_shippment_revenue_greater_then_or_equal"] = simpleFields["transmission_shippment_revenue_greater_then_or_equal"];
+    shipment_revenue["other"]["other_shippment_revenue_less_then"] = simpleFields["other_shippment_revenue_less_then"];
+    shipment_revenue["other"]["other_shippment_revenue_greater_then_or_equal"] = simpleFields["other_shippment_revenue_greater_then_or_equal"];
+    roas_settings["shipment_revenue"] = shipment_revenue;
+
+    employeecost_lb[simpleFields["empcost_ov_lb_set_option"]] = simpleFields["empcost_lb_set_value"];
+    roas_settings["employeecost_lower_bound"] = employeecost_lb;
+    employeecost_ub[simpleFields["empcost_ov_ub_set_option"]] = simpleFields["empcost_ub_set_value"];
+    roas_settings["employeecost_upper_bound"] = employeecost_ub;
+
+
+  }
+
+  const roasranges = undefined || {};
+  for (let roasField in Object.keys(setroasFields)) {
+    for (let key in setroasFields[roasField]) {
+      const roasrangeobject = undefined || {};
+      roasrangeobject["r_val"] = setroasFields[roasField]["roasval"];
+      if (setroasFields[roasField]["roasvaltype"] === true) {
+        roasrangeobject["r_type"] = "fixed";
+      } else {
+        roasrangeobject["r_type"] = "increment";
+      }
+      roasranges[setroasFields[roasField]["roasmin"] + "-" + setroasFields[roasField]["roasmax"]] = roasrangeobject;
+    }
+  }
+
+  const employeecostranges = undefined || {};
+  for (let employeecostField in Object.keys(employeecostFields)) {
+    for (let ekey in employeecostFields[employeecostField]) {
+      employeecostranges[employeecostFields[employeecostField]["empcost_ov_min"] + "-" + employeecostFields[employeecostField]["empcost_ov_max"]] = employeecostFields[employeecostField]["empcostval"];
+    }
+  }
+
+  roas_settings["roas_range"] = roasranges;
+  roas_settings["employeecost_range"] = employeecostranges;
+  connection.query("UPDATE pm_settings SET roas = '" + JSON.stringify(roas_settings) + "' WHERE id = 1", (err, rows, fields) => {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
 
-      fs.writeFile('../s.json', JSON.stringify(req.body), (err) => {
+      fs.writeFile('../s.json', JSON.stringify(roas_settings), (err) => {
         if (err) throw err;
       });
-      return res.status(200).json({ settings: JSON.stringify(req.body) });
+      return res.status(200).json({ settings: JSON.stringify(roas_settings) });
     }
   })
 });

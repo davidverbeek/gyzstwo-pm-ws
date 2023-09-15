@@ -1,3 +1,5 @@
+
+var pricelogger = require("../priceLogger");
 class productPriceService {
 
     getData(connection, request, resultsCallback) {
@@ -46,17 +48,19 @@ class productPriceService {
 
     savePriceData(connection, request, resultsCallback) {
 
-        const chunk_size = 1000;
+        const chunk_size = 2;
+        pricelogger.info("Total Updates:-" + request.length + " Chunk Size:-" + chunk_size);
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
 
         //const chunkLength = chunks;
         //console.log(chunkLength.length);
 
+
         for (const chunk_key in chunks) {
             const value = chunks[chunk_key];
 
             var update_bulk_sql = "UPDATE price_management_data SET ";
-            var col_sp = "selling_price = (CASE ";
+            var col_sp = "selling_price123 = (CASE ";
             var col_pp = "profit_percentage = (CASE ";
             var col_ppsp = "profit_percentage_selling_price = (CASE ";
             var col_dgp = "discount_on_gross_price = (CASE ";
@@ -136,13 +140,10 @@ class productPriceService {
                 update_bulk_sql += col_sp + ', ' + col_pp + ', ' + col_ppsp + ', ' + col_dgp + ', ' + col_pi + ', ' + col_iu + ', ' + col_siu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
             }
 
-            //console.log(update_bulk_sql);
-
-            //connection.query(update_bulk_sql);
-
+            pricelogger.info("Processing Chunk " + chunk_key + ":-" + update_bulk_sql);
             connection.query(update_bulk_sql, (error, results) => {
                 if (error) {
-                    return console.error(error.message);
+                    pricelogger.error(error.message);
                 }
                 if (debtor_number == "no") {
                     connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES " + historyString + "");
@@ -150,10 +151,6 @@ class productPriceService {
             });
 
         }
-
-        // const arr = Array.from({length: Math.ceil(request.length / chunk_size)});
-        // console.table(arr);
-        //console.log(request);
         resultsCallback("done");
     }
 
