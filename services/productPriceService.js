@@ -48,7 +48,7 @@ class productPriceService {
 
     savePriceData(connection, request, resultsCallback) {
 
-        const chunk_size = 2;
+        const chunk_size = 1000;
         pricelogger.info("Total Updates:-" + request.length + " Chunk Size:-" + chunk_size);
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
 
