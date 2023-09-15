@@ -1,5 +1,5 @@
 
-var pricelogger = require("../priceLogger");
+//var pricelogger = require("../priceLogger");
 class productPriceService {
 
     getData(connection, request, resultsCallback) {
