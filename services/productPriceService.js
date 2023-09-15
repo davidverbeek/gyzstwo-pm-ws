@@ -60,7 +60,7 @@ class productPriceService {
             const value = chunks[chunk_key];
 
             var update_bulk_sql = "UPDATE price_management_data SET ";
-            var col_sp = "selling_price123 = (CASE ";
+            var col_sp = "selling_price = (CASE ";
             var col_pp = "profit_percentage = (CASE ";
             var col_ppsp = "profit_percentage_selling_price = (CASE ";
             var col_dgp = "discount_on_gross_price = (CASE ";
