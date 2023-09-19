@@ -47,7 +47,7 @@ class revenueService {
         return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
-    getAllRevenue(connection, request, resultsCallback) {
+    getAllRoas(connection, request, resultsCallback) {
         connection.query(request, (error, results) => {
             resultsCallback(results);
         });
@@ -95,22 +95,27 @@ class revenueService {
     }
 
     createNumberFilterSql(key, item) {
-        console.log(key + "===" + item.type);
+        var ptable = ["supplier_type", "name", "merk"];
+        var col_prefix = "rd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
+
         switch (item.type) {
             case 'equals':
-                return key + ' = ' + item.filter;
+                return col_prefix + key + ' = ' + item.filter;
             case 'notEqual':
-                return key + ' != ' + item.filter;
+                return col_prefix + key + ' != ' + item.filter;
             case 'greaterThan':
-                return key + ' > ' + item.filter;
+                return col_prefix + key + ' > ' + item.filter;
             case 'greaterThanOrEqual':
-                return key + ' >= ' + item.filter;
+                return col_prefix + key + ' >= ' + item.filter;
             case 'lessThan':
-                return key + ' < ' + item.filter;
+                return col_prefix + key + ' < ' + item.filter;
             case 'lessThanOrEqual':
-                return key + ' <= ' + item.filter;
+                return col_prefix + key + ' <= ' + item.filter;
             case 'inRange':
-                return '(' + key + ' >= ' + item.filter + ' and ' + key + ' <= ' + item.filterTo + ')';
+                return '(' + col_prefix + key + ' >= ' + item.filter + ' and ' + col_prefix + key + ' <= ' + item.filterTo + ')';
             default:
                 console.log('unknown number filter type: ' + item.type);
                 return 'true';
@@ -118,19 +123,24 @@ class revenueService {
     }
 
     createTextFilterSql(key, item) {
+        var ptable = ["supplier_type", "name", "merk"];
+        var col_prefix = "rd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
         switch (item.type) {
             case 'equals':
-                return key + ' = "' + item.filter + '"';
+                return col_prefix + key + ' = "' + item.filter + '"';
             case 'notEqual':
-                return key + ' != "' + item.filter + '"';
+                return col_prefix + key + ' != "' + item.filter + '"';
             case 'contains':
-                return key + ' like "%' + item.filter + '%"';
+                return col_prefix + key + ' like "%' + item.filter + '%"';
             case 'notContains':
-                return key + ' not like "%' + item.filter + '%"';
+                return col_prefix + key + ' not like "%' + item.filter + '%"';
             case 'startsWith':
-                return key + ' like "' + item.filter + '%"';
+                return col_prefix + key + ' like "' + item.filter + '%"';
             case 'endsWith':
-                return key + ' like "%' + item.filter + '"';
+                return col_prefix + key + ' like "%' + item.filter + '"';
             default:
                 console.log('unknown text filter type: ' + item.type);
                 return 'true';

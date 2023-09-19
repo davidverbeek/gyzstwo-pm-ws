@@ -37,6 +37,8 @@ var bolCommissionService = require('./services/bolCommissionService');
 var bolMinimumService = require('./services/bolMinimumService');
 var revenueService = require('./services/revenueService');
 var orderService = require('./services/orderService');
+var currentRoasService = require('./services/currentRoasService');
+
 
 
 
@@ -334,6 +336,17 @@ app.post('/pm-revenue', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/currentroas', bodyParser.json(), function (req, res) {
+  currentRoasService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    currentRoasService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
 app.get('/get-pm-revenue', bodyParser.json(), function (req, res) {
   connection.query("SELECT * FROM gyzsrevenuedata ORDER BY sku_vericale_som DESC LIMIT 1", (err, rows, fields) => {
     if (err) {
@@ -352,5 +365,31 @@ app.get('/get-pm-revenue-sum', bodyParser.json(), function (req, res) {
       return res.status(200).json({ revenueSumData: rows });
     }
   })
+});
+
+app.post('/set-roasdate', bodyParser.json(), function (req, res) {
+  connection.query("UPDATE roas_date SET new_roas_feed_from_date = '" + req.body[0] + "', new_roas_feed_to_date = '" + req.body[1] + "' WHERE id = 1", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' });
+    } else {
+      return res.status(200).json({ message: 'success' });
+    }
+  })
+});
+
+app.get('/get-roasdate', bodyParser.json(), function (req, res) {
+  connection.query("Select * FROM roas_date WHERE id = 1", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' });
+    } else {
+      return res.status(200).json({ message: rows });
+    }
+  })
+});
+
+app.post('/all-roas', bodyParser.text(), function (req, res) {
+  currentRoasService.getAllRoas(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
 });
 

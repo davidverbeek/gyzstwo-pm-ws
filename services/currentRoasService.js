@@ -1,9 +1,13 @@
-class bolCommissionService {
+class currentRoasService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
         //console.log(SQL);
         connection.query(SQL, (error, results) => {
+            if (error) {
+                //errorlogger.error(error.message);
+            }
+
             const rowCount = this.getRowCount(request, results);
             const resultsForPage = this.cutResultsToPageSize(request, results);
             const currentSql = SQL;
@@ -22,7 +26,7 @@ class bolCommissionService {
 
         const selectSql = this.createSelectSql(request);
 
-        const fromSql = " FROM price_management_bol_commission";
+        const fromSql = " FROM roascurrent AS rc LEFT JOIN price_management_data AS pmd ON pmd.product_id = rc.product_id";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -44,6 +48,12 @@ class bolCommissionService {
         return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
+    getAllRoas(connection, request, resultsCallback) {
+        connection.query(request, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
     createSelectSql(request) {
         const rowGroupCols = request.rowGroupCols;
         const valueCols = request.valueCols;
@@ -62,7 +72,7 @@ class bolCommissionService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select *';
+        return ' select DISTINCT rc.*, pmd.name, pmd.merk, pmd.categories, pmd.supplier_type';
     }
 
     createFilterSql(key, item) {
@@ -86,22 +96,27 @@ class bolCommissionService {
     }
 
     createNumberFilterSql(key, item) {
-        //console.log(key + "===" + item.type);
+        var ptable = ["supplier_type", "name", "merk", "categories"];
+        var col_prefix = "rc.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
+
         switch (item.type) {
             case 'equals':
-                return key + ' = ' + item.filter;
+                return col_prefix + key + ' = ' + item.filter;
             case 'notEqual':
-                return key + ' != ' + item.filter;
+                return col_prefix + key + ' != ' + item.filter;
             case 'greaterThan':
-                return key + ' > ' + item.filter;
+                return col_prefix + key + ' > ' + item.filter;
             case 'greaterThanOrEqual':
-                return key + ' >= ' + item.filter;
+                return col_prefix + key + ' >= ' + item.filter;
             case 'lessThan':
-                return key + ' < ' + item.filter;
+                return col_prefix + key + ' < ' + item.filter;
             case 'lessThanOrEqual':
-                return key + ' <= ' + item.filter;
+                return col_prefix + key + ' <= ' + item.filter;
             case 'inRange':
-                return '(' + key + ' >= ' + item.filter + ' and ' + key + ' <= ' + item.filterTo + ')';
+                return '(' + col_prefix + key + ' >= ' + item.filter + ' and ' + col_prefix + key + ' <= ' + item.filterTo + ')';
             default:
                 console.log('unknown number filter type: ' + item.type);
                 return 'true';
@@ -109,19 +124,26 @@ class bolCommissionService {
     }
 
     createTextFilterSql(key, item) {
+
+        var ptable = ["supplier_type", "name", "merk", "categories"];
+        var col_prefix = "rc.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
+
         switch (item.type) {
             case 'equals':
-                return key + ' = "' + item.filter + '"';
+                return col_prefix + key + ' = "' + item.filter + '"';
             case 'notEqual':
-                return key + ' != "' + item.filter + '"';
+                return col_prefix + key + ' != "' + item.filter + '"';
             case 'contains':
-                return key + ' like "%' + item.filter + '%"';
+                return col_prefix + key + ' like "%' + item.filter + '%"';
             case 'notContains':
-                return key + ' not like "%' + item.filter + '%"';
+                return col_prefix + key + ' not like "%' + item.filter + '%"';
             case 'startsWith':
-                return key + ' like "' + item.filter + '%"';
+                return col_prefix + key + ' like "' + item.filter + '%"';
             case 'endsWith':
-                return key + ' like "%' + item.filter + '"';
+                return col_prefix + key + ' like "%' + item.filter + '"';
             default:
                 console.log('unknown text filter type: ' + item.type);
                 return 'true';
@@ -238,4 +260,4 @@ class bolCommissionService {
     }
 }
 
-module.exports = new bolCommissionService();
+module.exports = new currentRoasService();
