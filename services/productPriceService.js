@@ -383,6 +383,22 @@ class productPriceService {
             return results;
         }
     }
+
+
+    getCategoryBrand(connection, request, resultsCallback) {
+        //let selected_cats = request['selected_cats'];
+        let selected_cats = "";
+
+        let cat_que = "";
+        if (selected_cats != "") {
+            cat_que = " WHERE mccp.category_id IN (" + selected_cats + ")";
+        }
+        let SQL = "SELECT pmd.id, meaov.value AS product_count, pmd.supplier_type FROM mage_catalog_product_entity AS MCPE INNER JOIN mage_catalog_category_product AS mccp ON mccp.product_id = mcpe.entity_id INNER JOIN price_management_data AS pmd ON pmd.product_id = mcpe.entity_id LEFT JOIN mage_catalog_product_entity_int AS mcpei ON mcpei.entity_id = pmd.product_id AND mcpei.attribute_id = '2120' LEFT JOIN mage_eav_attribute_option_value AS meaov ON meaov.option_id = mcpei.value " + cat_que + " group by meaov.value ORDER BY meaov.value ASC";
+
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
 }
 
 module.exports = new productPriceService();

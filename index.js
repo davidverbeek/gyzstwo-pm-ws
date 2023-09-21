@@ -146,3 +146,16 @@ app.post('/dbt-rules-reset', bodyParser.json(), function (req, res) {
   });
 
 });
+
+app.post('/category-brand', bodyParser.json(), function (req, res) {
+  productPriceService.getCategoryBrand(connection, req.body, (brands_of_cats) => {
+    res.send({ brands_of_cats });
+  });
+});
+
+app.get('/all-debtor-product', bodyParser.json(), function (req, res) {
+  debterRuleFileService.getAllDebtorProduct(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
