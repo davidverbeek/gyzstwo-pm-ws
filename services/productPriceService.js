@@ -32,13 +32,17 @@ class productPriceService {
 
     savePriceData(connection, request, resultsCallback) {
 
-        const chunk_size = 1000;
-        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
 
+        const chunk_size = 1000;
+        const debtor_to_update = request[0].debtor;
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+        // const is_debtor = request.debtor;
         //const chunkLength = chunks;
         //console.log(chunkLength.length);
 
+
         for (const chunk_key in chunks) {
+
             const value = chunks[chunk_key];
 
             var update_bulk_sql = "UPDATE price_management_data SET ";
@@ -49,12 +53,12 @@ class productPriceService {
             var col_pi = "percentage_increase = (CASE ";
             var col_iu = "is_updated = (CASE ";
 
-            var col_debid = "";
-            var col_debsp = "";
-            var col_debpp = "";
-            var col_debppsp = "";
-            var col_debdgp = "";
-            var col_debiu = "";
+            let col_debid = "";
+            let col_debsp = "";
+            let col_debpp = "";
+            let col_debppsp = "";
+            let col_debdgp = "";
+            let col_debiu = "";
 
             var col_final_debid = "";
             var col_final_debsp = "";
@@ -63,71 +67,87 @@ class productPriceService {
             var col_final_debdgp = "";
             var col_final_debiu = "";
 
-            var debtor_number = "no";
+            let debtor_number = "no";
 
             var updateArray = [];
+
             var historyString = "";
 
-            for (const chunk_data in value) {
-                const actual_data = value[chunk_data];
+            if (typeof debtor_to_update != "undefined") {
+                debtor_number = debtor_to_update;
+                const SQL = "SELECT customer_group_name, product_ids FROM price_management_customer_groups JOIN price_management_debter_categories ON price_management_debter_categories.customer_group = price_management_customer_groups.magento_id WHERE price_management_debter_categories.product_ids != '' AND price_management_customer_groups.customer_group_name=" + debtor_to_update;
+                //console.log(SQL);
+                connection.query(SQL, (err, result) => {
+                    if (result.length > 0) {
+                        const productArray = result[0].product_ids.split(',');
 
-                if (typeof actual_data["debtor"] != "undefined") {
-                    debtor_number = actual_data["debtor"];
-                    col_debid += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["debtor_id"] + "'";
-                    col_debsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_debter_selling_price"] + "'";
-                    col_debpp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_buying_price"] + "'";
-                    col_debppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_selling_price"] + "'";
-                    col_debdgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price"] + "'";
-                    col_debiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
-                } else {
+                        for (const chunk_data in value) {
+                            const actual_data = value[chunk_data];
+                            if (productArray.includes(String(actual_data.product_id))) {
+
+                                col_debid += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["debtor_id"] + "'";
+                                col_debsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_debter_selling_price"] + "'";
+                                col_debpp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_buying_price"] + "'";
+                                col_debppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_selling_price"] + "'";
+                                col_debdgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price"] + "'";
+                                col_debiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                                updateArray.push(actual_data.product_id);
+                            }
+
+                        }
+
+                        var col_final_debid = "group_" + debtor_number + "_magento_id = (CASE " + col_debid + " END)";
+                        var col_final_debsp = "group_" + debtor_number + "_debter_selling_price = (CASE " + col_debsp + " END)";
+                        var col_final_debpp = "group_" + debtor_number + "_margin_on_buying_price = (CASE " + col_debpp + " END)";
+                        var col_final_debppsp = "group_" + debtor_number + "_margin_on_selling_price = (CASE " + col_debppsp + " END)";
+                        var col_final_debdgp = "group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price = (CASE " + col_debdgp + " END)";
+                        var col_final_debiu = "is_updated = (CASE " + col_debiu + " END)";
+                        //create_case_statement_for_price += " END";
+                        var get_all_products_to_update = updateArray.join(",");
+                        update_bulk_sql += col_final_debid + ', ' + col_final_debsp + ', ' + col_final_debpp + ', ' + col_final_debppsp + ', ' + col_final_debdgp + ', ' + col_final_debiu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+
+                        connection.query(update_bulk_sql, (error, results) => {
+                            if (error) {
+                                return console.error(error.message);
+                            }
+                        });
+                    }
+                });
+            } else {
+                for (const chunk_data in value) {
+                    const actual_data = value[chunk_data];
+
                     col_sp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.selling_price + "'";
                     col_pp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage + "'";
                     col_ppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage_selling_price + "'";
                     col_dgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.discount_on_gross_price + "'";
                     col_pi += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.percentage_increase + "'";
                     col_iu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
-
-
                     historyString += "('" + actual_data.product_id + "','" + actual_data.webshop_net_unit_price + "','" + actual_data.webshop_gross_unit_price + "','" + actual_data.webshop_idealeverpakking + "','" + actual_data.webshop_afwijkenidealeverpakking + "','" + actual_data.webshop_buying_price + "','" + actual_data.webshop_selling_price + "','" + actual_data.buying_price + "','" + actual_data.gross_unit_price + "','" + actual_data.idealeverpakking + "','" + actual_data.afwijkenidealeverpakking + "','" + actual_data.buying_price + "','" + actual_data.selling_price + "',now(),'Price Management','No','" + JSON.stringify(Array('new_selling_price')) + "','0','No'),";
+
+                    updateArray.push(actual_data.product_id);
                 }
-                updateArray.push(actual_data.product_id);
-            }
+                historyString = historyString.replace(/,+$/, '');
 
-            historyString = historyString.replace(/,+$/, '');
-
-            col_sp += " END)";
-            col_pp += " END)";
-            col_ppsp += " END)";
-            col_dgp += " END)";
-            col_pi += " END)";
-            col_iu += " END)";
-            //create_case_statement_for_price += " END";
-            var get_all_products_to_update = updateArray.join(",");
-
-            if (debtor_number != "no") { //If debtors
-                var col_final_debid = "group_" + debtor_number + "_magento_id = (CASE " + col_debid + " END)";
-                var col_final_debsp = "group_" + debtor_number + "_debter_selling_price = (CASE " + col_debsp + " END)";
-                var col_final_debpp = "group_" + debtor_number + "_margin_on_buying_price = (CASE " + col_debpp + " END)";
-                var col_final_debppsp = "group_" + debtor_number + "_margin_on_selling_price = (CASE " + col_debppsp + " END)";
-                var col_final_debdgp = "group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price = (CASE " + col_debdgp + " END)";
-                var col_final_debiu = "is_updated = (CASE " + col_debiu + " END)";
-                update_bulk_sql += col_final_debid + ', ' + col_final_debsp + ', ' + col_final_debpp + ', ' + col_final_debppsp + ', ' + col_final_debdgp + ', ' + col_final_debiu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
-            } else {
+                col_sp += " END)";
+                col_pp += " END)";
+                col_ppsp += " END)";
+                col_dgp += " END)";
+                col_pi += " END)";
+                col_iu += " END)";
+                //create_case_statement_for_price += " END";
+                var get_all_products_to_update = updateArray.join(",");
                 update_bulk_sql += col_sp + ', ' + col_pp + ', ' + col_ppsp + ', ' + col_dgp + ', ' + col_pi + ', ' + col_iu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+
+                connection.query(update_bulk_sql, (error, results) => {
+                    if (error) {
+                        return console.error(error.message);
+                    }
+                    if (debtor_number == "no") {
+                        //connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES " + historyString + "");
+                    }
+                });
             }
-
-            //console.log(update_bulk_sql);
-
-            //connection.query(update_bulk_sql);
-
-            connection.query(update_bulk_sql, (error, results) => {
-                if (error) {
-                    return console.error(error.message);
-                }
-                if (debtor_number == "no") {
-                    connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES " + historyString + "");
-                }
-            });
 
         }
 
@@ -386,15 +406,13 @@ class productPriceService {
 
 
     getCategoryBrand(connection, request, resultsCallback) {
-        //let selected_cats = request['selected_cats'];
-        let selected_cats = "";
-
+        let selected_cats = request['selected_cats'];
         let cat_que = "";
+
         if (selected_cats != "") {
             cat_que = " WHERE mccp.category_id IN (" + selected_cats + ")";
         }
         let SQL = "SELECT pmd.id, meaov.value AS product_count, pmd.supplier_type FROM mage_catalog_product_entity AS MCPE INNER JOIN mage_catalog_category_product AS mccp ON mccp.product_id = mcpe.entity_id INNER JOIN price_management_data AS pmd ON pmd.product_id = mcpe.entity_id LEFT JOIN mage_catalog_product_entity_int AS mcpei ON mcpei.entity_id = pmd.product_id AND mcpei.attribute_id = '2120' LEFT JOIN mage_eav_attribute_option_value AS meaov ON meaov.option_id = mcpei.value " + cat_que + " group by meaov.value ORDER BY meaov.value ASC";
-
         connection.query(SQL, (error, results) => {
             resultsCallback(results);
         });
