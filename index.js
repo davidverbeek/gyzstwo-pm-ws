@@ -3,6 +3,18 @@ const fs = require('fs');
 const app = express()
 const port = 3200
 
+const multer = require('multer');
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'googleroas')
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname)
+  }
+})
+const upload = multer({ storage: storage })
+
+
 app.get('/', (req, res) => {
   res.send('Hello World!')
 })
@@ -38,6 +50,18 @@ var bolMinimumService = require('./services/bolMinimumService');
 var revenueService = require('./services/revenueService');
 var orderService = require('./services/orderService');
 var currentRoasService = require('./services/currentRoasService');
+var googleActualRoasService = require('./services/googleActualRoasService');
+
+app.post('/uploadgoogleroas', upload.single('googleroas'), function (req, res, next) {
+  // req.file is the `avatar` file
+  // req.body will hold the text fields, if there were any
+
+  connection.query("INSERT INTO google_actual_roas SET from_date = '" + req.body.startdate + "', to_date = '" + req.body.enddate + "', file_name = '" + req.file.filename + "'");
+  res.send({
+    success: true,
+    message: "File uploaded"
+  })
+})
 
 
 
@@ -392,4 +416,22 @@ app.post('/all-roas', bodyParser.text(), function (req, res) {
     res.json({ msg });
   });
 });
+
+app.post('/google-actual-roas', bodyParser.json(), function (req, res) {
+  googleActualRoasService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    googleActualRoasService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
+app.post('/save-google-actual-roas', bodyParser.json(), function (req, res) {
+  googleActualRoasService.saveGoogleRoas(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
 
