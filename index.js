@@ -159,3 +159,9 @@ app.get('/all-debtor-product', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/dbt-alias-cats', bodyParser.json(), function (req, res) {
+  debterRuleFileService.getCategoriesByAlias(connection, req.body, (rows) => {
+    res.json({ rows });
+  });
+});
+
