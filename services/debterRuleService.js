@@ -143,11 +143,10 @@ class debterRuleService {
 
     getCategoriesByAlias(connection, request, resultsCallback) {
         var result = Object.keys(request).map(function (k) { return request[k] }).join("', '");
-
         connection.query("SELECT cg.group_alias, dc.category_ids  FROM price_management_customer_groups as cg inner join price_management_debter_categories as dc on cg.magento_id = dc.customer_group where cg.group_alias IN ('" + result + "') and dc.category_ids != ''", function (err, result, fields) {
             if (err) throw err;
             //console.log(result);
-            resultsCallback(err, result);
+            resultsCallback(result);
         });
 
     }//end getCategoriesByAlias()
