@@ -18,15 +18,15 @@ class debterRuleService {
         var sql_reset_price = "UPDATE price_management_data SET " + debter_col_1 + "=0, " + debter_col_2 + "=0, " + debter_col_3 + "=0, " + debter_col_4 + " = 0";
         sql_reset_price += " WHERE product_id IN (" + request.product_ids + ")";
 
-        console.log(sql_reset_price);
+        //  console.log(sql_reset_price);
 
         connection.query(sql_reset_price, (error, results) => {
             if (error) {
                 return console.error(error.message);
             } else {
-                return ('done');
                 var products_arr = request.product_ids.split(",");
-                console.log(products_arr.length + " products price has been reset");
+                console.log(products_arr.length + " products price has been reset.");
+                resultsCallback('done');
             }
 
         });
@@ -84,11 +84,12 @@ class debterRuleService {
         sql += " ON DUPLICATE KEY UPDATE category_ids = VALUES(category_ids), customer_group = VALUES(customer_group), product_ids = VALUES(product_ids), updated_at = VALUES(updated_at)";
         connection.query(sql, (error, results) => {
             if (error) {
-                return console.error(error.message);
+                console.log(error.message);
+                resultsCallback('failed to save');
             } else {
 
                 console.log("1 record inserted");
-                return ('done');
+                resultsCallback('done');
             }
         });
     }
@@ -228,7 +229,7 @@ class debterRuleService {
     getListCopyDebtors(connection, request, resultsCallback) {
         const SQL = "SELECT cg.magento_id, cg.group_alias FROM gyzs_admin_management.price_management_debter_categories dc JOIN price_management_customer_groups cg ON dc.customer_group=cg.magento_id ORDER BY cg.customer_group_name";
         connection.query(SQL, (err, result) => {
-            resultsCallback(err, result);
+            resultsCallback(result);
         });
     }
 

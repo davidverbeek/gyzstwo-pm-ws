@@ -112,9 +112,8 @@ app.post('/pm-products-history', bodyParser.json(), function (req, res) {
 });
 
 app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
-  // console.log(req.body);
   debterRuleFileService.insertDebterRules(connection, req.body, (msg) => {
-    res.json({ msg });
+    return res.status(200).json({ msg });
   });
 });
 
@@ -165,3 +164,8 @@ app.post('/dbt-alias-cats', bodyParser.json(), function (req, res) {
   });
 });
 
+app.get('/list-copy-debtors', bodyParser.json(), function (req, res) {
+  debterRuleFileService.getListCopyDebtors(connection, req.body, (rows) => {
+    res.send({ rows });
+  });
+});
