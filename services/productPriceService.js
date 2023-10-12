@@ -33,8 +33,7 @@ class productPriceService {
     }
 
     getAllProductBySkus(connection, request, resultsCallback) {
-        const SQL = "SELECT * FROM price_management_data WHERE sku IN (" + request + ")";
-        //console.log(SQL);
+        const SQL = "SELECT * FROM price_management_data";
         connection.query(SQL, (error, results) => {
             resultsCallback(results);
         });
@@ -155,10 +154,9 @@ class productPriceService {
     }
 
     uploadPriceData(connection, request, resultsCallback) {
-        const chunk_size = 1;
+        const chunk_size = 15000;
         const chunks = Array.from({ length: Math.ceil(request[1].length / chunk_size) }).map(() => request[1].splice(0, chunk_size));
         var allCols = request[0].split(",");
-
         for (const chunk_key in chunks) {
             const value = chunks[chunk_key];
             var uploadData = "";
@@ -171,29 +169,23 @@ class productPriceService {
                 });
                 uploadData = uploadData.replace(/,+$/, '');
                 uploadData += "),";
+
             }
             uploadData = uploadData.replace(/,+$/, '');
             sql += "" + uploadData + " ON DUPLICATE KEY UPDATE " + request[2] + "";
-
-            this.insertChunk(connection, chunk_key, sql).then((result) => {
-                var a_key = parseFloat(chunk_key) + parseFloat(1);
-                chunkStatus.push(result);
-                if (chunks.length == a_key) {
-                    resultsCallback(chunkStatus);
-                }
-
-            }).catch((error) => {
-                var a_key = parseFloat(chunk_key) + parseFloat(1);
-                chunkStatus.push(error);
-                if (chunks.length == a_key) {
-                    resultsCallback(chunkStatus);
+            //pricelogger.info("Upload Chunk " + chunk_key + ":- " + sql);
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    pricelogger.error("Upload Chunk " + chunk_key + " ERROR :- " + error.message);
                 }
             });
+
+
         }
 
         // For History
         if (request[3].length >= 1) {
-            const history_chunk_size = 1;
+            const history_chunk_size = 15000;
             const history_chunks = Array.from({ length: Math.ceil(request[3].length / history_chunk_size) }).map(() => request[3].splice(0, history_chunk_size));
             var historyCols = "product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed";
             var allHistoryCols = historyCols.split(",");
@@ -214,16 +206,17 @@ class productPriceService {
 
                 uploadHistoryData = uploadHistoryData.replace(/,+$/, '');
                 historySql += "" + uploadHistoryData + "";
+                // pricelogger.info("Upload History Chunk " + history_chunk_key + ":- " + historySql);
                 connection.query(historySql, (error, results) => {
                     if (error) {
-                        return console.error(error.message);
+                        pricelogger.error("Upload History Chunk " + history_chunk_key + " ERROR :- " + error.message);
                     }
                 });
 
             }
         }
 
-
+        resultsCallback("done");
 
 
     }
