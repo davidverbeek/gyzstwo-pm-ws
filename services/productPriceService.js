@@ -506,8 +506,7 @@ class productPriceService {
         if (selected_cats != "") {
             cat_que = " WHERE catpro.category_id IN (" + selected_cats + ")";
         }
-        let SQL = "SELECT pmd.id, pmd.merk AS product_count, pmd.supplier_type FROM price_management_catpro AS catpro INNER JOIN price_management_data AS pmd ON pmd.product_id = catpro.product_id AND " + cat_que + " group by pmd.merk ORDER BY pmd.merk ASC";
-
+        let SQL = "SELECT pmd.id, pmd.merk AS product_count, pmd.supplier_type FROM price_management_catpro AS catpro INNER JOIN price_management_data AS pmd ON pmd.product_id = catpro.product_id " + cat_que + " group by pmd.merk ORDER BY pmd.merk ASC";
         connection.query(SQL, (error, results) => {
             resultsCallback(results);
         });
