@@ -1,4 +1,4 @@
-class productPriceHistoryService {
+class orderService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
@@ -9,7 +9,6 @@ class productPriceHistoryService {
             const currentSql = SQL;
             resultsCallback(resultsForPage, rowCount, currentSql);
         });
-        connection.query("UPDATE price_management_history SET is_viewed = 'Yes' WHERE product_id = '" + request.historyPid + "'");
     }
 
     getDataCount(connection, request, resultsCallback) {
@@ -22,7 +21,8 @@ class productPriceHistoryService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-        const fromSql = " FROM price_management_history";
+
+        const fromSql = " FROM sales_order AS so INNER JOIN sales_order_item AS soi ON so.entity_id = soi.order_id AND so.created_at >= '" + request.revenueStartDate + "' AND so.created_at < '" + request.revenueEndDate + "' AND soi.sku = '" + request.revenueSku + "'";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -34,6 +34,7 @@ class productPriceHistoryService {
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
+            // console.log(SQL);
             return SQL;
         }
     }
@@ -41,6 +42,12 @@ class productPriceHistoryService {
     buildsqlcount(fromSql, whereSql) {
         var countsql = "";
         return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+    }
+
+    getAllRevenue(connection, request, resultsCallback) {
+        connection.query(request, (error, results) => {
+            resultsCallback(results);
+        });
     }
 
     createSelectSql(request) {
@@ -61,7 +68,7 @@ class productPriceHistoryService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select date_format(updated_date_time,"%Y-%m-%d") AS updated_date_time, old_net_unit_price, old_gross_unit_price, old_idealeverpakking, old_afwijkenidealeverpakking, old_buying_price, old_selling_price, new_net_unit_price, new_gross_unit_price, new_idealeverpakking, new_afwijkenidealeverpakking, new_buying_price, new_selling_price, updated_by, is_viewed, fields_changed';
+        return ' select so.state, so.created_at AS created_at,soi.order_id AS order_id,soi.qty_ordered AS qty_ordered,soi.qty_refunded AS qty_refunded,soi.base_cost AS base_cost,soi.base_price AS base_price,(CASE soi.afwijkenidealeverpakking WHEN 0 THEN (soi.base_cost * soi.qty_ordered * soi.idealeverpakking)  ELSE (soi.base_cost * soi.qty_ordered) END) AS cost,(soi.base_price * soi.qty_ordered) AS price,((soi.base_price * soi.qty_ordered) - (CASE soi.afwijkenidealeverpakking WHEN 0 THEN (soi.base_cost * soi.qty_ordered * soi.idealeverpakking)  ELSE (soi.base_cost * soi.qty_ordered) END) ) AS absolute_margin,soi.afwijkenidealeverpakking AS afwijkenidealeverpakking,soi.idealeverpakking AS idealeverpakking';
     }
 
     createFilterSql(key, item) {
@@ -150,12 +157,12 @@ class productPriceHistoryService {
             });
         }
 
-        var history_filter = 'product_id = ' + request.historyPid + '';
+        var defaultWhereCondition = "(so.state != 'canceled' AND so.state != 'new')";
 
         if (whereParts.length > 0) {
-            return ' where ' + whereParts.join(' and ') + ' and ' + history_filter + '';
+            return ' where ' + defaultWhereCondition + ' and ' + whereParts.join(' and ');
         } else {
-            return ' where product_id = ' + request.historyPid + '';
+            return ' where ' + defaultWhereCondition + '';
         }
     }
 
@@ -239,4 +246,4 @@ class productPriceHistoryService {
     }
 }
 
-module.exports = new productPriceHistoryService();
+module.exports = new orderService();

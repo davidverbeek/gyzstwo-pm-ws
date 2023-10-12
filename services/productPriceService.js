@@ -1,3 +1,5 @@
+
+var pricelogger = require("../priceLogger");
 class productPriceService {
 
     getData(connection, request, resultsCallback) {
@@ -30,6 +32,215 @@ class productPriceService {
         });
     }
 
+    getAllProductBySkus(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_data WHERE sku IN (" + request + ")";
+        //console.log(SQL);
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+    activateUpdatedProducts(connection, request, resultsCallback) {
+        const SQL = "UPDATE price_management_data SET is_activated = '1' WHERE is_updated = '1'";
+        connection.query(SQL, (error, results) => {
+            resultsCallback("done");
+        });
+    }
+
+    savePriceData(connection, request, resultsCallback) {
+
+        const chunk_size = 1000;
+        pricelogger.info("Total Updates:-" + request.length + " Chunk Size:-" + chunk_size);
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+
+        //const chunkLength = chunks;
+        //console.log(chunkLength.length);
+
+
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+
+            var update_bulk_sql = "UPDATE price_management_data SET ";
+            var col_sp = "selling_price = (CASE ";
+            var col_pp = "profit_percentage = (CASE ";
+            var col_ppsp = "profit_percentage_selling_price = (CASE ";
+            var col_dgp = "discount_on_gross_price = (CASE ";
+            var col_pi = "percentage_increase = (CASE ";
+            var col_iu = "is_updated = (CASE ";
+            var col_siu = "is_updated_skwirrel = (CASE "
+
+            var col_debid = "";
+            var col_debsp = "";
+            var col_debpp = "";
+            var col_debppsp = "";
+            var col_debdgp = "";
+            var col_debiu = "";
+            var col_debsiu = "";
+
+            var col_final_debid = "";
+            var col_final_debsp = "";
+            var col_final_debpp = "";
+            var col_final_debppsp = "";
+            var col_final_debdgp = "";
+            var col_final_debiu = "";
+            var col_final_debsiu = "";
+
+            var debtor_number = "no";
+
+            var updateArray = [];
+            var historyString = "";
+
+            for (const chunk_data in value) {
+                const actual_data = value[chunk_data];
+
+                if (typeof actual_data["debtor"] != "undefined") {
+                    debtor_number = actual_data["debtor"];
+                    col_debid += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["debtor_id"] + "'";
+                    col_debsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_debter_selling_price"] + "'";
+                    col_debpp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_buying_price"] + "'";
+                    col_debppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_selling_price"] + "'";
+                    col_debdgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price"] + "'";
+                    col_debiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                    col_debsiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                } else {
+                    col_sp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.selling_price + "'";
+                    col_pp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage + "'";
+                    col_ppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage_selling_price + "'";
+                    col_dgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.discount_on_gross_price + "'";
+                    col_pi += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.percentage_increase + "'";
+                    col_iu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                    col_siu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+
+                    historyString += "('" + actual_data.product_id + "','" + actual_data.webshop_net_unit_price + "','" + actual_data.webshop_gross_unit_price + "','" + actual_data.webshop_idealeverpakking + "','" + actual_data.webshop_afwijkenidealeverpakking + "','" + actual_data.webshop_buying_price + "','" + actual_data.webshop_selling_price + "','" + actual_data.buying_price + "','" + actual_data.gross_unit_price + "','" + actual_data.idealeverpakking + "','" + actual_data.afwijkenidealeverpakking + "','" + actual_data.buying_price + "','" + actual_data.selling_price + "',now(),'Price Management','No','" + JSON.stringify(Array('new_selling_price')) + "','0','No'),";
+                }
+                updateArray.push(actual_data.product_id);
+            }
+
+            historyString = historyString.replace(/,+$/, '');
+
+            col_sp += " END)";
+            col_pp += " END)";
+            col_ppsp += " END)";
+            col_dgp += " END)";
+            col_pi += " END)";
+            col_iu += " END)";
+            col_siu += " END)";
+            //create_case_statement_for_price += " END";
+            var get_all_products_to_update = updateArray.join(",");
+
+            if (debtor_number != "no") { //If debtors
+                var col_final_debid = "group_" + debtor_number + "_magento_id = (CASE " + col_debid + " END)";
+                var col_final_debsp = "group_" + debtor_number + "_debter_selling_price = (CASE " + col_debsp + " END)";
+                var col_final_debpp = "group_" + debtor_number + "_margin_on_buying_price = (CASE " + col_debpp + " END)";
+                var col_final_debppsp = "group_" + debtor_number + "_margin_on_selling_price = (CASE " + col_debppsp + " END)";
+                var col_final_debdgp = "group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price = (CASE " + col_debdgp + " END)";
+                var col_final_debiu = "is_updated = (CASE " + col_debiu + " END)";
+                var col_final_debsiu = "is_updated_skwirrel = (CASE " + col_debsiu + " END)";
+                update_bulk_sql += col_final_debid + ', ' + col_final_debsp + ', ' + col_final_debpp + ', ' + col_final_debppsp + ', ' + col_final_debdgp + ', ' + col_final_debiu + ',' + col_final_debsiu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+            } else {
+                update_bulk_sql += col_sp + ', ' + col_pp + ', ' + col_ppsp + ', ' + col_dgp + ', ' + col_pi + ', ' + col_iu + ', ' + col_siu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+            }
+
+            pricelogger.info("Processing Chunk " + chunk_key + ":-" + update_bulk_sql);
+            connection.query(update_bulk_sql, (error, results) => {
+                if (error) {
+                    pricelogger.error(error.message);
+                }
+                if (debtor_number == "no") {
+                    connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES " + historyString + "");
+                }
+            });
+
+        }
+        resultsCallback("done");
+    }
+
+    uploadPriceData(connection, request, resultsCallback) {
+        const chunk_size = 1;
+        const chunks = Array.from({ length: Math.ceil(request[1].length / chunk_size) }).map(() => request[1].splice(0, chunk_size));
+        var allCols = request[0].split(",");
+
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+            var uploadData = "";
+            var chunkStatus = Array();
+            var sql = "INSERT INTO price_management_data (" + request[0] + ") VALUES ";
+            for (const chunk_data in value) {
+                uploadData += "(";
+                allCols.forEach((col) => {
+                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
+                });
+                uploadData = uploadData.replace(/,+$/, '');
+                uploadData += "),";
+            }
+            uploadData = uploadData.replace(/,+$/, '');
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE " + request[2] + "";
+
+            this.insertChunk(connection, chunk_key, sql).then((result) => {
+                var a_key = parseFloat(chunk_key) + parseFloat(1);
+                chunkStatus.push(result);
+                if (chunks.length == a_key) {
+                    resultsCallback(chunkStatus);
+                }
+
+            }).catch((error) => {
+                var a_key = parseFloat(chunk_key) + parseFloat(1);
+                chunkStatus.push(error);
+                if (chunks.length == a_key) {
+                    resultsCallback(chunkStatus);
+                }
+            });
+        }
+
+        // For History
+        if (request[3].length >= 1) {
+            const history_chunk_size = 1;
+            const history_chunks = Array.from({ length: Math.ceil(request[3].length / history_chunk_size) }).map(() => request[3].splice(0, history_chunk_size));
+            var historyCols = "product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed";
+            var allHistoryCols = historyCols.split(",");
+
+            for (const history_chunk_key in history_chunks) {
+                const history_value = history_chunks[history_chunk_key];
+                var uploadHistoryData = "";
+                var historySql = "INSERT INTO price_management_history (" + historyCols + ") VALUES ";
+
+                for (const history_chunk_data in history_value) {
+                    uploadHistoryData += "(";
+                    allHistoryCols.forEach((hisCol) => {
+                        uploadHistoryData += "'" + history_value[history_chunk_data][hisCol] + "'" + ",";
+                    });
+                    uploadHistoryData = uploadHistoryData.replace(/,+$/, '');
+                    uploadHistoryData += "),";
+                }
+
+                uploadHistoryData = uploadHistoryData.replace(/,+$/, '');
+                historySql += "" + uploadHistoryData + "";
+                connection.query(historySql, (error, results) => {
+                    if (error) {
+                        return console.error(error.message);
+                    }
+                });
+
+            }
+        }
+
+
+
+
+    }
+
+    insertChunk(connection, chunk_key, sql) {
+        return new Promise((resolve, reject) => {
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    //reject("Error in chunk " + chunk_key + ": " + error.message + "");
+                    reject("Error in chunk " + chunk_key + "");
+                } else {
+                    resolve("Success Chunk " + chunk_key + "");
+                }
+            });
+        });
+    }
+
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
@@ -49,6 +260,7 @@ class productPriceService {
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
+            // console.log(SQL);
             return SQL;
         }
     }
@@ -85,13 +297,12 @@ class productPriceService {
                 "pmd.group_" + cust_group + "_discount_on_grossprice_b_on_deb_selling_price");
         }
 
-
-        return ' select distinct pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, ' + all_d_cols.toString() + '';
+        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + '';
     }
 
     createFilterSql(key, item) {
-        // console.log(key);
-        // console.log(item);
+        //console.log(key + "===" + item + "===" + item.filterType);
+
         switch (item.filterType) {
             case 'text':
                 return this.createTextFilterSql(key, item);
@@ -110,7 +321,7 @@ class productPriceService {
     }
 
     createNumberFilterSql(key, item) {
-        console.log(key + "===" + item.type);
+        //console.log(key + "===" + item.type);
         switch (item.type) {
             case 'equals':
                 return key + ' = ' + item.filter;
@@ -169,12 +380,30 @@ class productPriceService {
 
         if (filterModel) {
             const keySet = Object.keys(filterModel);
+            //console.log(keySet);
             keySet.forEach(function (key) {
                 const item = filterModel[key];
                 whereParts.push(that.createFilterSql(key, item));
             });
+            //console.log(whereParts);
         }
 
+        var whereClause = "";
+
+        if (whereParts.length > 0) {
+            whereClause = whereParts.join(' AND ');
+            whereClause += ' AND';
+        }
+        if ((request.cats).length > 0) {
+            whereClause += ' pmcp.category_id IN (' + request.cats + ') AND';
+        }
+        if (whereClause == "") {
+            return '';
+        } else {
+            return 'where ' + whereClause.replace(/ AND$/, '') + '';
+        }
+
+        /*
         var cat_filter = "";
         if ((request.cats).length > 0) {
             cat_filter = 'pmcp.category_id IN (' + request.cats + ')';
@@ -193,7 +422,7 @@ class productPriceService {
                 return 'where pmcp.category_id IN (' + request.cats + ')';
             }
         }
-
+        */
 
     }
 
