@@ -45,6 +45,7 @@ connection.connect()
 
 var productPriceService = require('./services/productPriceService');
 var productPriceHistoryService = require('./services/productPriceHistoryService');
+var debterRuleFileService = require('./services/debterRuleService');
 var bolCommissionService = require('./services/bolCommissionService');
 var bolMinimumService = require('./services/bolMinimumService');
 var revenueService = require('./services/revenueService');
@@ -63,9 +64,6 @@ app.post('/uploadgoogleroas', upload.single('googleroas'), function (req, res, n
   })
 })
 
-
-
-
 app.post('/auth', bodyParser.json(), (req, res) => {
   // res.json(req.body);
   connection.query('SELECT count(*) AS count_user, page_access FROM users WHERE username = "' + req.body.username + '" AND password = "' + req.body.password + '"', (err, rows, fields) => {
@@ -79,8 +77,6 @@ app.post('/auth', bodyParser.json(), (req, res) => {
         return res.status(501).json({ message: "Invalid user" });
       }
     }
-    //console.log('The solution is: ', rows[0].solution)
-    //res.json(err);
   })
 })
 
@@ -96,6 +92,7 @@ app.post('/pm-products', bodyParser.json(), function (req, res) {
 });
 
 app.post('/save-products', bodyParser.json(), function (req, res) {
+  //console.log(req.body);
   productPriceService.savePriceData(connection, req.body, (msg) => {
     res.json({ msg });
   });
@@ -224,6 +221,65 @@ app.post('/pm-bol-minimum', bodyParser.json(), function (req, res) {
       }
       res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
     })
+  });
+});
+
+app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
+  debterRuleFileService.insertDebterRules(connection, req.body, (msg) => {
+    return res.status(200).json({ msg });
+  });
+});
+
+app.post('/catpro-products', bodyParser.json(), function (req, res) {
+  console.log(req.body);
+  connection.query("SELECT distinct product_id FROM price_management_catpro where category_id IN (" + req.body + ")", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ products_of_cats: rows });
+    }
+  })
+});
+
+app.post('/dbt-rules-cats', bodyParser.json(), function (req, res) {
+  // console.log(req);
+  debterRuleFileService.getData_debter_rules(connection, req.body, (err, rows) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ debter_cats: rows });
+    }
+  });
+});
+
+app.post('/dbt-rules-reset', bodyParser.json(), function (req, res) {
+  debterRuleFileService.resetDebterPrices(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+
+});
+
+app.post('/category-brand', bodyParser.json(), function (req, res) {
+  productPriceService.getCategoryBrand(connection, req.body, (brands_of_cats) => {
+    res.send({ brands_of_cats });
+  });
+});
+
+app.get('/all-debtor-product', bodyParser.json(), function (req, res) {
+  debterRuleFileService.getAllDebtorProduct(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
+app.post('/dbt-alias-cats', bodyParser.json(), function (req, res) {
+  debterRuleFileService.getCategoriesByAlias(connection, req.body, (rows) => {
+    res.json({ rows });
+  });
+});
+
+app.get('/list-copy-debtors', bodyParser.json(), function (req, res) {
+  debterRuleFileService.getListCopyDebtors(connection, req.body, (rows) => {
+    res.send({ rows });
   });
 });
 

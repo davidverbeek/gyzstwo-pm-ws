@@ -234,7 +234,6 @@ class productPriceService {
         });
     }
 
-
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
@@ -290,7 +289,6 @@ class productPriceService {
                 "pmd.group_" + cust_group + "_margin_on_selling_price",
                 "pmd.group_" + cust_group + "_discount_on_grossprice_b_on_deb_selling_price");
         }
-
 
         return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + '';
     }
@@ -498,6 +496,135 @@ class productPriceService {
         } else {
             return results;
         }
+    }
+
+
+    getCategoryBrand(connection, request, resultsCallback) {
+        let selected_cats = request['selected_cats'];
+        let cat_que = "";
+
+        if (selected_cats != "") {
+            cat_que = " WHERE catpro.category_id IN (" + selected_cats + ")";
+        }
+        let SQL = "SELECT pmd.id, pmd.merk AS product_count, pmd.supplier_type FROM price_management_catpro AS catpro INNER JOIN price_management_data AS pmd ON pmd.product_id = catpro.product_id AND " + cat_que + " group by pmd.merk ORDER BY pmd.merk ASC";
+
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
+    savePriceData(connection, request, resultsCallback) {
+
+        const chunk_size = 1000;
+
+        pricelogger.info("Total Updates:-" + request.length + " Chunk Size:-" + chunk_size);
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+
+        //const chunkLength = chunks;
+        //console.log(chunkLength.length);
+
+
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+
+            var update_bulk_sql = "UPDATE price_management_data SET ";
+            var col_sp = "selling_price = (CASE ";
+            var col_pp = "profit_percentage = (CASE ";
+            var col_ppsp = "profit_percentage_selling_price = (CASE ";
+            var col_dgp = "discount_on_gross_price = (CASE ";
+            var col_pi = "percentage_increase = (CASE ";
+            var col_iu = "is_updated = (CASE ";
+            var col_siu = "is_updated_skwirrel = (CASE "
+
+            var col_debid = "";
+            var col_debsp = "";
+            var col_debpp = "";
+            var col_debppsp = "";
+            var col_debdgp = "";
+            var col_debiu = "";
+            var col_debsiu = "";
+
+            var col_final_debid = "";
+            var col_final_debsp = "";
+            var col_final_debpp = "";
+            var col_final_debppsp = "";
+            var col_final_debdgp = "";
+            var col_final_debiu = "";
+            var col_final_debsiu = "";
+
+            var debtor_number = "no";
+
+            var updateArray = [];
+            var historyString = "";
+
+            for (const chunk_data in value) {
+                const actual_data = value[chunk_data];
+
+                if (typeof actual_data["debtor"] != "undefined") {
+
+                    //if that product_id does not exist then continue
+
+                    debtor_number = actual_data["debtor"];
+
+
+                    col_debid += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["debtor_id"] + "'";
+                    col_debsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_debter_selling_price"] + "'";
+                    col_debpp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_buying_price"] + "'";
+                    col_debppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_margin_on_selling_price"] + "'";
+                    col_debdgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data["group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price"] + "'";
+                    col_debiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                    col_debsiu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                } else {
+                    col_sp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.selling_price + "'";
+                    col_pp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage + "'";
+                    col_ppsp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.profit_percentage_selling_price + "'";
+                    col_dgp += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.discount_on_gross_price + "'";
+                    col_pi += "WHEN product_id = '" + actual_data.product_id + "' THEN '" + actual_data.percentage_increase + "'";
+                    col_iu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+                    col_siu += "WHEN product_id = '" + actual_data.product_id + "' THEN '1'";
+
+                    historyString += "('" + actual_data.product_id + "','" + actual_data.webshop_net_unit_price + "','" + actual_data.webshop_gross_unit_price + "','" + actual_data.webshop_idealeverpakking + "','" + actual_data.webshop_afwijkenidealeverpakking + "','" + actual_data.webshop_buying_price + "','" + actual_data.webshop_selling_price + "','" + actual_data.buying_price + "','" + actual_data.gross_unit_price + "','" + actual_data.idealeverpakking + "','" + actual_data.afwijkenidealeverpakking + "','" + actual_data.buying_price + "','" + actual_data.selling_price + "',now(),'Price Management','No','" + JSON.stringify(Array('new_selling_price')) + "','0','No'),";
+                }
+                updateArray.push(actual_data.product_id);
+            }
+
+            historyString = historyString.replace(/,+$/, '');
+
+            col_sp += " END)";
+            col_pp += " END)";
+            col_ppsp += " END)";
+            col_dgp += " END)";
+            col_pi += " END)";
+            col_iu += " END)";
+            col_siu += " END)";
+            //create_case_statement_for_price += " END";
+            var get_all_products_to_update = updateArray.join(",");
+
+            if (debtor_number != "no") { //If debtors
+                var col_final_debid = "group_" + debtor_number + "_magento_id = (CASE " + col_debid + " END)";
+                var col_final_debsp = "group_" + debtor_number + "_debter_selling_price = (CASE " + col_debsp + " END)";
+                var col_final_debpp = "group_" + debtor_number + "_margin_on_buying_price = (CASE " + col_debpp + " END)";
+                var col_final_debppsp = "group_" + debtor_number + "_margin_on_selling_price = (CASE " + col_debppsp + " END)";
+                var col_final_debdgp = "group_" + debtor_number + "_discount_on_grossprice_b_on_deb_selling_price = (CASE " + col_debdgp + " END)";
+                var col_final_debiu = "is_updated = (CASE " + col_debiu + " END)";
+                var col_final_debsiu = "is_updated_skwirrel = (CASE " + col_debsiu + " END)";
+                update_bulk_sql += col_final_debid + ', ' + col_final_debsp + ', ' + col_final_debpp + ', ' + col_final_debppsp + ', ' + col_final_debdgp + ', ' + col_final_debiu + ',' + col_final_debsiu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+            } else {
+                update_bulk_sql += col_sp + ', ' + col_pp + ', ' + col_ppsp + ', ' + col_dgp + ', ' + col_pi + ', ' + col_iu + ', ' + col_siu + ' WHERE product_id IN (' + get_all_products_to_update + ')';
+            }
+
+            pricelogger.info("Processing Chunk " + chunk_key + ":-" + update_bulk_sql);
+            connection.query(update_bulk_sql, (error, results) => {
+                if (error) {
+                    pricelogger.error(error.message);
+                }
+                if (debtor_number == "no") {
+                    connection.query("INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed,is_synced) VALUES " + historyString + "");
+                }
+            });
+
+        }
+        resultsCallback("done");
     }
 }
 
