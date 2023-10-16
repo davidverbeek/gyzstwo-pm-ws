@@ -253,7 +253,6 @@ class productPriceService {
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
-            // console.log(SQL);
             return SQL;
         }
     }

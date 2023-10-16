@@ -237,7 +237,6 @@ class debterRuleService {
 
         const SQL = "SELECT * FROM price_management_customer_groups JOIN price_management_debter_categories ON price_management_debter_categories.customer_group = price_management_customer_groups.magento_id";
         connection.query(SQL, (err, result) => {
-            console.log(err);
             resultsCallback(result);
         });
     }
