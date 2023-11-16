@@ -231,7 +231,6 @@ app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
 });
 
 app.post('/catpro-products', bodyParser.json(), function (req, res) {
-  console.log(req.body);
   connection.query("SELECT distinct product_id FROM price_management_catpro where category_id IN (" + req.body + ")", (err, rows, fields) => {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' + err });
