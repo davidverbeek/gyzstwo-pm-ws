@@ -3,6 +3,7 @@ const fs = require('fs');
 const app = express()
 const port = 3200
 
+
 const multer = require('multer');
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -13,25 +14,25 @@ const storage = multer.diskStorage({
   }
 })
 const upload = multer({ storage: storage })
-
-
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
-
 var cors = require('cors');
 app.use(cors());
+
+const server = app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+});
+
+envConfig = require("./env");
+const io = require('socket.io')(server, {
+  cors: {
+    origin: envConfig.serverUrl,
+    methods: ["GET", "POST"]
+  }
+});
 
 const bodyParser = require("body-parser");
 var jwt = require('jsonwebtoken');
 app.use(bodyParser.json({ limit: '500mb' }));
 app.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 500000 }));
-
-
 
 dbconfig = require("./dbconfig");
 const mysql = require('mysql')
@@ -97,9 +98,12 @@ app.post('/save-products', bodyParser.json(), function (req, res) {
     res.json({ msg });
   });
 });
-app.post('/upload-products', bodyParser.json(), function (req, res) {
-  productPriceService.uploadPriceData(connection, req.body, (msg) => {
-    res.json({ msg });
+
+io.on('connection', socket => {
+  app.post('/upload-products', bodyParser.json(), function (req, res) {
+    productPriceService.uploadPriceData(connection, req.body, io, (msg) => {
+      res.json({ msg });
+    });
   });
 });
 
