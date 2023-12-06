@@ -1,15 +1,18 @@
-class productPriceHistoryService {
+class revenueService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
         //console.log(SQL);
         connection.query(SQL, (error, results) => {
+            if (error) {
+                //errorlogger.error(error.message);
+            }
+
             const rowCount = this.getRowCount(request, results);
             const resultsForPage = this.cutResultsToPageSize(request, results);
             const currentSql = SQL;
             resultsCallback(resultsForPage, rowCount, currentSql);
         });
-        connection.query("UPDATE price_management_history SET is_viewed = 'Yes' WHERE product_id = '" + request.historyPid + "'");
     }
 
     getDataCount(connection, request, resultsCallback) {
@@ -22,7 +25,8 @@ class productPriceHistoryService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-        const fromSql = " FROM price_management_history";
+
+        const fromSql = " FROM gyzsrevenuedata AS rd LEFT JOIN price_management_data AS pmd ON pmd.product_id = rd.product_id";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -43,6 +47,12 @@ class productPriceHistoryService {
         return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
+    getAllRoas(connection, request, resultsCallback) {
+        connection.query(request, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
     createSelectSql(request) {
         const rowGroupCols = request.rowGroupCols;
         const valueCols = request.valueCols;
@@ -61,7 +71,7 @@ class productPriceHistoryService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select date_format(updated_date_time,"%Y-%m-%d") AS updated_date_time, old_net_unit_price, old_gross_unit_price, old_idealeverpakking, old_afwijkenidealeverpakking, old_buying_price, old_selling_price, new_net_unit_price, new_gross_unit_price, new_idealeverpakking, new_afwijkenidealeverpakking, new_buying_price, new_selling_price, updated_by, is_viewed, fields_changed';
+        return ' select DISTINCT rd.*, pmd.supplier_type, pmd.name, pmd.merk';
     }
 
     createFilterSql(key, item) {
@@ -85,22 +95,27 @@ class productPriceHistoryService {
     }
 
     createNumberFilterSql(key, item) {
-        console.log(key + "===" + item.type);
+        var ptable = ["supplier_type", "name", "merk"];
+        var col_prefix = "rd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
+
         switch (item.type) {
             case 'equals':
-                return key + ' = ' + item.filter;
+                return col_prefix + key + ' = ' + item.filter;
             case 'notEqual':
-                return key + ' != ' + item.filter;
+                return col_prefix + key + ' != ' + item.filter;
             case 'greaterThan':
-                return key + ' > ' + item.filter;
+                return col_prefix + key + ' > ' + item.filter;
             case 'greaterThanOrEqual':
-                return key + ' >= ' + item.filter;
+                return col_prefix + key + ' >= ' + item.filter;
             case 'lessThan':
-                return key + ' < ' + item.filter;
+                return col_prefix + key + ' < ' + item.filter;
             case 'lessThanOrEqual':
-                return key + ' <= ' + item.filter;
+                return col_prefix + key + ' <= ' + item.filter;
             case 'inRange':
-                return '(' + key + ' >= ' + item.filter + ' and ' + key + ' <= ' + item.filterTo + ')';
+                return '(' + col_prefix + key + ' >= ' + item.filter + ' and ' + col_prefix + key + ' <= ' + item.filterTo + ')';
             default:
                 console.log('unknown number filter type: ' + item.type);
                 return 'true';
@@ -108,19 +123,24 @@ class productPriceHistoryService {
     }
 
     createTextFilterSql(key, item) {
+        var ptable = ["supplier_type", "name", "merk"];
+        var col_prefix = "rd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
         switch (item.type) {
             case 'equals':
-                return key + ' = "' + item.filter + '"';
+                return col_prefix + key + ' = "' + item.filter + '"';
             case 'notEqual':
-                return key + ' != "' + item.filter + '"';
+                return col_prefix + key + ' != "' + item.filter + '"';
             case 'contains':
-                return key + ' like "%' + item.filter + '%"';
+                return col_prefix + key + ' like "%' + item.filter + '%"';
             case 'notContains':
-                return key + ' not like "%' + item.filter + '%"';
+                return col_prefix + key + ' not like "%' + item.filter + '%"';
             case 'startsWith':
-                return key + ' like "' + item.filter + '%"';
+                return col_prefix + key + ' like "' + item.filter + '%"';
             case 'endsWith':
-                return key + ' like "%' + item.filter + '"';
+                return col_prefix + key + ' like "%' + item.filter + '"';
             default:
                 console.log('unknown text filter type: ' + item.type);
                 return 'true';
@@ -150,12 +170,10 @@ class productPriceHistoryService {
             });
         }
 
-        var history_filter = 'product_id = ' + request.historyPid + '';
-
         if (whereParts.length > 0) {
-            return ' where ' + whereParts.join(' and ') + ' and ' + history_filter + '';
+            return ' where ' + whereParts.join(' and ');
         } else {
-            return ' where product_id = ' + request.historyPid + '';
+            return '';
         }
     }
 
@@ -239,4 +257,4 @@ class productPriceHistoryService {
     }
 }
 
-module.exports = new productPriceHistoryService();
+module.exports = new revenueService();
