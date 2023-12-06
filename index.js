@@ -400,7 +400,7 @@ app.post('/set-settings', bodyParser.json(), function (req, res) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
 
-      fs.writeFile('../s.json', JSON.stringify(roas_settings), (err) => {
+      fs.writeFile(envConfig.pmSettingsJsonPath + '/s.json', JSON.stringify(roas_settings), (err) => {
         if (err) throw err;
       });
       return res.status(200).json({ settings: JSON.stringify(roas_settings) });
