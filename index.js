@@ -52,6 +52,8 @@ var revenueService = require('./services/revenueService');
 var orderService = require('./services/orderService');
 var currentRoasService = require('./services/currentRoasService');
 var googleActualRoasService = require('./services/googleActualRoasService');
+var verifyPriceService = require('./services/verifyPriceService');
+
 
 app.post('/uploadgoogleroas', upload.single('googleroas'), function (req, res, next) {
   // req.file is the `avatar` file
@@ -491,3 +493,26 @@ app.post('/save-google-actual-roas', bodyParser.json(), function (req, res) {
 });
 
 
+app.get('/get_productset_options', bodyParser.json(), function (req, res) {
+  productPriceService.getListOfProductSet(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+
+app.get('/verify-pmd-prices', bodyParser.json(), function (req, res) {
+  verifyPriceService.verifyPricePercentage(connection, req.body, (msg) => {
+    console.log(msg);
+    res.send({ msg });
+  });
+});
+
+app.post('/verified-pmd-prices', bodyParser.json(), function (req, res) {
+  verifyPriceService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    verifyPriceService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
