@@ -3,7 +3,6 @@ const fs = require('fs');
 const app = express()
 const port = 3200
 
-
 const multer = require('multer');
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -22,17 +21,16 @@ const server = app.listen(port, () => {
 });
 
 envConfig = require("./env");
-const io = require('socket.io')(server, {
+/* const io = require('socket.io')(server, {
   cors: {
-    origin: envConfig.serverUrl,
-    methods: ["GET", "POST"]
+    origins: ["*"]
   }
-});
+}); */
 
 const bodyParser = require("body-parser");
 var jwt = require('jsonwebtoken');
-app.use(bodyParser.json({ limit: '500mb' }));
-app.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 500000 }));
+app.use(bodyParser.json({ limit: '50000mb' }));
+app.use(bodyParser.urlencoded({ limit: '50000mb', extended: true, parameterLimit: 500000 }));
 
 dbconfig = require("./dbconfig");
 const mysql = require('mysql')
@@ -99,13 +97,22 @@ app.post('/save-products', bodyParser.json(), function (req, res) {
   });
 });
 
-io.on('connection', socket => {
-  app.post('/upload-products', bodyParser.json(), function (req, res) {
-    productPriceService.uploadPriceData(connection, req.body, io, (msg) => {
-      res.json({ msg });
-    });
+//io.on('connection', socket => {
+/* setInterval(() => {
+  io.emit("showUploadProgress", Math.random());
+}, 1000); */
+//});
+
+
+app.post('/upload-products', bodyParser.json(), function (req, res) {
+  /* productPriceService.uploadPriceData(connection, req.body, io, (msg) => {
+    res.json({ msg });
+  }); */
+  productPriceService.uploadPriceData(connection, req.body, fs, envConfig.pmSettingsJsonPath, (msg) => {
+    res.json({ msg });
   });
 });
+
 
 app.post('/save-bol-delivery-time', bodyParser.json(), function (req, res) {
   bolMinimumService.saveBolDeliveryTime(connection, req.body, (msg) => {

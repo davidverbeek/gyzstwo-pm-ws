@@ -161,7 +161,7 @@ class productPriceService {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async uploadPriceData(connection, request, io, resultsCallback) {
+    async uploadPriceData(connection, request, fs, fpath, resultsCallback) {
 
         const batchSize = 1000; // Number of iterations to process in each batch
         let buffer = [];
@@ -170,6 +170,7 @@ class productPriceService {
         const chunks = Array.from({ length: Math.ceil(request[1].length / chunk_size) }).map(() => request[1].splice(0, chunk_size));
         var allCols = request[0].split(",");
         var current_product = 1;
+        var p = {};
         for (const chunk_key in chunks) {
             const value = chunks[chunk_key];
             var uploadData = "";
@@ -189,8 +190,13 @@ class productPriceService {
                 uploadData += "),";
                 this.percentage_uploaded = parseFloat(current_product / total_products) * 100;
                 if (buffer.length === batchSize) {
-                    io.emit("showUploadProgress", parseInt(this.percentage_uploaded));
-                    await this.sleep(1);
+                    //io.emit("showUploadProgress", parseInt(this.percentage_uploaded));
+                    p["cnt"] = parseInt(this.percentage_uploaded);
+                    fs.writeFile(fpath + '/progress.txt', JSON.stringify(p), (err) => {
+                        if (err) throw err;
+                    });
+
+                    await this.sleep(1000);
                     buffer = [];
                 }
                 chunk_current_product++;
@@ -208,7 +214,11 @@ class productPriceService {
 
         // Emit any remaining items in the buffer
         if (buffer.length > 0) {
-            io.emit('showUploadProgress', parseInt(this.percentage_uploaded));
+            //io.emit('showUploadProgress', parseInt(this.percentage_uploaded));
+            p["cnt"] = parseInt(this.percentage_uploaded);
+            fs.writeFile(fpath + '/progress.txt', JSON.stringify(p), (err) => {
+                if (err) throw err;
+            });
         }
 
         // For History
