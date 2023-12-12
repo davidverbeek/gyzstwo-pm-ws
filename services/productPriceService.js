@@ -21,6 +21,9 @@ class productPriceService {
 
     getAllProducts(connection, request, resultsCallback) {
         connection.query(request, (error, results) => {
+            if (error) {
+                console.error("error in getting products from check All" + error.message);
+            }
             resultsCallback(results);
         });
     }
@@ -289,7 +292,7 @@ class productPriceService {
                 "pmd.group_" + cust_group + "_discount_on_grossprice_b_on_deb_selling_price");
         }
 
-        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ', ' + ' mktpr.lowest_price, mktpr.highest_price, mktpr.lp_diff_percentage, mktpr.hp_diff_percentage';
+        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ', ' + ' mktpr.lowest_price, mktpr.highest_price, mktpr.lp_diff_percentage, mktpr.hp_diff_percentage, mktpr.price_competition_score,mktpr.position,mktpr.number_competitors,mktpr.productset_incl_dispatch,mktpr.price_of_the_next_excl_shipping';
     }
 
     createFilterSql(key, item) {
@@ -613,6 +616,7 @@ class productPriceService {
 
             pricelogger.info("Processing Chunk " + chunk_key + ":-" + update_bulk_sql);
             connection.query(update_bulk_sql, (error, results) => {
+
                 if (error) {
                     pricelogger.error(error.message);
                 }
@@ -624,6 +628,15 @@ class productPriceService {
         }
         resultsCallback("done");
     }
+
+    getListOfProductSet(connection, request, resultsCallback) {
+        const SQL = "SELECT distinct bs.productset_incl_dispatch as productset FROM price_management_data AS pmd INNER JOIN bigshopper_prices AS bs ON bs.product_id = pmd.product_id WHERE pmd.selling_price > 0";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
 }
+
+
 
 module.exports = new productPriceService();
