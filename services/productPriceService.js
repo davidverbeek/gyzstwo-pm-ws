@@ -18,6 +18,7 @@ class productPriceService {
 
     getDataCount(connection, request, resultsCallback) {
         const SQL = this.buildSql(request, "show");
+        //console.log(SQL);
         connection.query(SQL, (error, results) => {
             resultsCallback(results[0]["TOTAL_RECORDS"]);
         });
@@ -302,7 +303,7 @@ class productPriceService {
 
     buildsqlcount(fromSql, whereSql) {
         var countsql = "";
-        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+        return countsql = "SELECT COUNT(DISTINCT pmd.product_id) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
     createSelectSql(request) {
