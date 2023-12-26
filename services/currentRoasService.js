@@ -48,7 +48,7 @@ class currentRoasService {
 
     buildsqlcount(fromSql, whereSql) {
         var countsql = "";
-        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+        return countsql = "SELECT COUNT(DISTINCT rc.product_id) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
     getAllRoas(connection, request, resultsCallback) {
