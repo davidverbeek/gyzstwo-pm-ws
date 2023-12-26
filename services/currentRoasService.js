@@ -25,8 +25,11 @@ class currentRoasService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-
-        const fromSql = " FROM roascurrent AS rc LEFT JOIN price_management_data AS pmd ON pmd.product_id = rc.product_id";
+        var category_join = "";
+        if ((request.cats).length > 0) {
+            category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = rc.product_id "
+        }
+        const fromSql = " FROM roascurrent AS rc LEFT JOIN price_management_data AS pmd ON pmd.product_id = rc.product_id " + category_join + "";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -173,11 +176,28 @@ class currentRoasService {
             });
         }
 
-        if (whereParts.length > 0) {
+        /* if (whereParts.length > 0) {
             return ' where ' + whereParts.join(' and ');
         } else {
             return '';
+        } */
+
+        var whereClause = "";
+
+        if (whereParts.length > 0) {
+            whereClause = whereParts.join(' AND ');
+            whereClause += ' AND';
         }
+        if ((request.cats).length > 0) {
+            whereClause += ' pmcp.category_id IN (' + request.cats + ') AND';
+        }
+        if (whereClause == "") {
+            return '';
+        } else {
+            return 'where ' + whereClause.replace(/ AND$/, '') + '';
+        }
+
+
     }
 
     createGroupBySql(request) {
