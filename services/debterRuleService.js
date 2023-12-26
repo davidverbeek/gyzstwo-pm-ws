@@ -89,7 +89,7 @@ class debterRuleService {
             } else {
 
                 console.log("1 record inserted");
-                resultsCallback('done');
+                resultsCallback('saved successfully');
             }
         });
     }
@@ -162,9 +162,9 @@ class debterRuleService {
             connection.query(SQL, (err, result, fields) => {
                 if (err) throw err;
 
-                var new_cat_arr = "";
+                let new_cat_arr = "";
                 let arr2 = new_cat_arr;
-                var new_product_ids = "";
+                let new_product_ids = "";
 
                 if (result[0]) {
                     new_cat_arr = result[0].category_ids;
@@ -181,6 +181,7 @@ class debterRuleService {
 
                 var SQL_2 = "select dc.category_ids, dc.product_ids, cg.customer_group_name, cg.magento_id from price_management_customer_groups as cg  LEFT JOIN  price_management_debter_categories AS dc ON dc.customer_group=cg.magento_id  WHERE cg.magento_id =" + request.destination_group_id;
                 connection.query(SQL_2, (err_2, result_2, destination_group) => {
+                    if (err_2) throw err;
                     //console.log(result_2);
                     if (result_2.length) {
 
@@ -207,13 +208,17 @@ class debterRuleService {
                         'customer_group': destination_group,
                     }
                     this.insertDebterRules(connection, a, msg);
+
                 });
-            })
+
+            });
+            resultsCallback("Data is copied and prices are reset successfully.");
         } catch (e) {
             console.log("Name of Error: ", e.name);
             console.log("Description about Error: ", e.message);
+            resultsCallback("catch of exception occured");
         }
-        resultsCallback("Data is copied and prices are reset successfully.");
+
 
         //result is single row
         //console.log(result);
