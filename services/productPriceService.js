@@ -1,6 +1,10 @@
 
 var pricelogger = require("../priceLogger");
+
+
 class productPriceService {
+
+    percentage_uploaded = 0;
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
@@ -14,6 +18,7 @@ class productPriceService {
 
     getDataCount(connection, request, resultsCallback) {
         const SQL = this.buildSql(request, "show");
+        //console.log(SQL);
         connection.query(SQL, (error, results) => {
             resultsCallback(results[0]["TOTAL_RECORDS"]);
         });
@@ -153,34 +158,68 @@ class productPriceService {
         resultsCallback("done");
     }
 
-    uploadPriceData(connection, request, resultsCallback) {
-        const chunk_size = 15000;
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async uploadPriceData(connection, request, fs, fpath, resultsCallback) {
+
+        const batchSize = 1000; // Number of iterations to process in each batch
+        let buffer = [];
+        const chunk_size = 1000;
+        var total_products = request[1].length;
         const chunks = Array.from({ length: Math.ceil(request[1].length / chunk_size) }).map(() => request[1].splice(0, chunk_size));
         var allCols = request[0].split(",");
+        var current_product = 1;
+        var p = {};
         for (const chunk_key in chunks) {
             const value = chunks[chunk_key];
             var uploadData = "";
             var chunkStatus = Array();
             var sql = "INSERT INTO price_management_data (" + request[0] + ") VALUES ";
+            var chunk_current_product = 1;
             for (const chunk_data in value) {
+
+                buffer.push(chunk_current_product);
+
                 uploadData += "(";
                 allCols.forEach((col) => {
                     uploadData += '"' + value[chunk_data][col] + '"' + ",";
                 });
+
                 uploadData = uploadData.replace(/,+$/, '');
                 uploadData += "),";
+                this.percentage_uploaded = parseFloat(current_product / total_products) * 100;
+                if (buffer.length === batchSize) {
+                    //io.emit("showUploadProgress", parseInt(this.percentage_uploaded));
+                    p["cnt"] = parseInt(this.percentage_uploaded);
+                    fs.writeFile(fpath + '/progress.txt', JSON.stringify(p), (err) => {
+                        if (err) throw err;
+                    });
 
+                    await this.sleep(1000);
+                    buffer = [];
+                }
+                chunk_current_product++;
+                current_product++;
             }
+
             uploadData = uploadData.replace(/,+$/, '');
             sql += "" + uploadData + " ON DUPLICATE KEY UPDATE " + request[2] + "";
-            //pricelogger.info("Upload Chunk " + chunk_key + ":- " + sql);
             connection.query(sql, (error, results) => {
                 if (error) {
                     pricelogger.error("Upload Chunk " + chunk_key + " ERROR :- " + error.message);
                 }
             });
+        }
 
-
+        // Emit any remaining items in the buffer
+        if (buffer.length > 0) {
+            //io.emit('showUploadProgress', parseInt(this.percentage_uploaded));
+            p["cnt"] = parseInt(this.percentage_uploaded);
+            fs.writeFile(fpath + '/progress.txt', JSON.stringify(p), (err) => {
+                if (err) throw err;
+            });
         }
 
         // For History
@@ -221,6 +260,8 @@ class productPriceService {
 
     }
 
+
+
     insertChunk(connection, chunk_key, sql) {
         return new Promise((resolve, reject) => {
             connection.query(sql, (error, results) => {
@@ -233,6 +274,8 @@ class productPriceService {
             });
         });
     }
+
+
 
     buildSql(request, totalrecords = "") {
 
@@ -260,7 +303,7 @@ class productPriceService {
 
     buildsqlcount(fromSql, whereSql) {
         var countsql = "";
-        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+        return countsql = "SELECT COUNT(DISTINCT pmd.product_id) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
     createSelectSql(request) {
@@ -435,7 +478,6 @@ class productPriceService {
         if ((request.cats).length > 0) {
             cat_filter = 'pmcp.category_id IN (' + request.cats + ')';
         }
-    
         if (whereParts.length > 0) {
             if (cat_filter == "") {
                 return ' where ' + whereParts.join(' and ') + '';

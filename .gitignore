@@ -10,3 +10,5 @@ dbconfig.js
 # googleroas
 /googleroas
 
+# env
+env.js

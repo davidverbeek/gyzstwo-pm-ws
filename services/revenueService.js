@@ -47,7 +47,7 @@ class revenueService {
         return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
-    getAllRoas(connection, request, resultsCallback) {
+    getAllRevenue(connection, request, resultsCallback) {
         connection.query(request, (error, results) => {
             resultsCallback(results);
         });

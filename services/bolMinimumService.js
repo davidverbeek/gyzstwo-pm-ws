@@ -250,7 +250,7 @@ class bolMinimumService {
     }
 
     saveBolDeliveryTime(connection, request, resultsCallback) {
-        const chunk_size = 3;
+        const chunk_size = 10000;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
         var allCols = ["product_id", "ec_deliverytime", "updated_date_time"];
         //var totalUpdated = Array();
@@ -287,7 +287,7 @@ class bolMinimumService {
     }
 
     saveBolDeliveryTimeBE(connection, request, resultsCallback) {
-        const chunk_size = 3;
+        const chunk_size = 10000;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
         var allCols = ["product_id", "ec_deliverytime_be", "updated_date_time"];
         //var totalUpdated = Array();
