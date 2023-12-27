@@ -462,6 +462,8 @@ app.post('/set-roasdate', bodyParser.json(), function (req, res) {
     if (err) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
+      connection.query("DROP TABLE IF EXISTS roas");
+      connection.query("CREATE TABLE roas AS SELECT sku, product_id, end_roas, brand_name, roas_genereated_date FROM roascurrent");
       return res.status(200).json({ message: 'success' });
     }
   })
@@ -500,8 +502,4 @@ app.post('/save-google-actual-roas', bodyParser.json(), function (req, res) {
   });
 });
 
-app.post('/copy-debters', bodyParser.json(), function (req, res) {
-  debterRuleFileService.copyGroups(connection, req.body, (msg) => {
-    res.json({ msg: msg });
-  });
-});
+
