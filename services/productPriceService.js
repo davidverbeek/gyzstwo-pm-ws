@@ -341,9 +341,42 @@ class productPriceService {
 
         switch (item.filterType) {
             case 'text':
-                return this.createTextFilterSql(key, item);
+
+                let i = 1;
+                let condition_making_new = '';
+                let condition_making = '';
+                for (i = 1; i <= 2; i++) {
+                    let condition = 'condition' + i;
+                    condition_making = this.createTextFilterSql(key, item[condition]);
+                    if (condition_making_new != '') {
+                        condition_making_new = condition_making_new + ' ' + item.operator + ' ' + condition_making;
+                    } else {
+                        condition_making_new = condition_making;
+                    }
+                }
+                return condition_making_new;
             case 'number':
-                return this.createNumberFilterSql(key, item);
+                let j = 1;
+                let condition_making_new_j = '';
+                let condition_making_j = '';
+                const result = this.countKeysMatchingString(item, 'condition');
+
+                if (result == 0) {
+                    return this.createNumberFilterSql(key, item);
+                } else {
+                    for (j = 1; j <= 2; j++) {
+                        let condition = 'condition' + j;
+
+                        condition_making_j = this.createNumberFilterSql(key, item[condition]);
+                        if (condition_making_new_j != '') {
+                            condition_making_new_j = condition_making_new_j + ' ' + item.operator + ' ' + condition_making_j;
+                        } else {
+                            condition_making_new_j = condition_making_j;
+                        }
+                    }
+                    return condition_making_new_j;
+                }
+
             case 'set':
                 return this.createSetFilterSql(key, item);
             default:
@@ -379,6 +412,7 @@ class productPriceService {
         }
     }
 
+
     createTextFilterSql(key, item) {
         switch (item.type) {
             case 'equals':
@@ -394,6 +428,8 @@ class productPriceService {
             case 'endsWith':
                 return key + ' like "%' + item.filter + '"';
             default:
+
+
                 console.log('unknown text filter type: ' + item.type);
                 return 'true';
         }
@@ -421,11 +457,9 @@ class productPriceService {
                 const item = filterModel[key];
                 whereParts.push(that.createFilterSql(key, item));
             });
-            //console.log(whereParts);
         }
 
         var whereClause = "";
-
         if (whereParts.length > 0) {
             whereClause = whereParts.join(' AND ');
             whereClause += ' AND';
@@ -444,7 +478,6 @@ class productPriceService {
         if ((request.cats).length > 0) {
             cat_filter = 'pmcp.category_id IN (' + request.cats + ')';
         }
-     
         if (whereParts.length > 0) {
             if (cat_filter == "") {
                 return ' where ' + whereParts.join(' and ') + '';
@@ -667,6 +700,20 @@ class productPriceService {
 
         }
         resultsCallback("done");
+    }
+
+    countKeysMatchingString(obj, searchString) {
+        let count = 0;
+
+        // Iterate through the keys of the object
+        for (const key in obj) {
+            // Check if the key includes the specified string
+            if (key.includes(searchString)) {
+                count++;
+            }
+        }
+
+        return count;
     }
 }
 
