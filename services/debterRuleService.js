@@ -85,13 +85,15 @@ class debterRuleService {
         connection.query(sql, (error, results) => {
             if (error) {
                 console.log(error.message);
-                resultsCallback('failed to save');
+                //  resultsCallback('failed to save');
             } else {
 
                 console.log("1 record inserted");
-                resultsCallback('saved successfully');
+
             }
         });
+
+        resultsCallback('saved successfully');
     }
 
 
@@ -198,7 +200,7 @@ class debterRuleService {
                         //check to reset prices that old cats are removed or not
                         let difference = arr1.filter(x => !arr2.includes(x));
                         if (arr1.length > 0 && difference.length > 0) {
-                            this.resetDebterPrices(connection, { customer_group: destination_group_name, product_ids: old_product_ids }, msg);
+                            this.resetDebterPrices(connection, { customer_group: destination_group_name, product_ids: old_product_ids }, (msg) => { return msg; });
                         }
                     }
                     // update query in debter categories
@@ -207,7 +209,7 @@ class debterRuleService {
                         'product_ids': new_product_ids,
                         'customer_group': destination_group,
                     }
-                    this.insertDebterRules(connection, a, msg);
+                    this.insertDebterRules(connection, a, (msg) => { return msg });
 
                 });
 
@@ -234,6 +236,8 @@ class debterRuleService {
     getListCopyDebtors(connection, request, resultsCallback) {
         const SQL = "SELECT cg.magento_id, cg.group_alias FROM gyzs_admin_management.price_management_debter_categories dc JOIN price_management_customer_groups cg ON dc.customer_group=cg.magento_id ORDER BY cg.customer_group_name";
         connection.query(SQL, (err, result) => {
+            if (err)
+                throw err;
             resultsCallback(result);
         });
     }
