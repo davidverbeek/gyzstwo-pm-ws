@@ -50,6 +50,7 @@ var bolMinimumService = require('./services/bolMinimumService');
 var revenueService = require('./services/revenueService');
 var orderService = require('./services/orderService');
 var currentRoasService = require('./services/currentRoasService');
+var liveRoasService = require('./services/liveRoasService');
 var googleActualRoasService = require('./services/googleActualRoasService');
 
 app.post('/uploadgoogleroas', upload.single('googleroas'), function (req, res, next) {
@@ -437,6 +438,17 @@ app.post('/currentroas', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/live-roas', bodyParser.json(), function (req, res) {
+  liveRoasService.getData(connection, req.body, (rows, lastRow, currentSql) => {
+    liveRoasService.getDataCount(connection, req.body, (recordCount) => {
+      if (lastRow == "-1") {
+        lastRow = recordCount;
+      }
+      res.json({ rows: rows, lastRow: lastRow, currentSql: currentSql });
+    })
+  });
+});
+
 app.get('/get-pm-revenue', bodyParser.json(), function (req, res) {
   connection.query("SELECT * FROM gyzsrevenuedata ORDER BY sku_vericale_som DESC LIMIT 1", (err, rows, fields) => {
     if (err) {
@@ -463,7 +475,8 @@ app.post('/set-roasdate', bodyParser.json(), function (req, res) {
       return res.status(501).json({ message: 'Something went wrong' });
     } else {
       connection.query("DROP TABLE IF EXISTS roas");
-      connection.query("CREATE TABLE roas AS SELECT sku, product_id, end_roas, brand_name, roas_genereated_date FROM roascurrent");
+      connection.query("CREATE TABLE roas AS SELECT id, sku, product_id, carrier_level, total_orders, roas_target, roas_per_cat_per_brand, end_roas, roas_genereated_date, roas_bol_status FROM roascurrent");
+      connection.query("CREATE INDEX index1 ON roas (product_id)");
       return res.status(200).json({ message: 'success' });
     }
   })
