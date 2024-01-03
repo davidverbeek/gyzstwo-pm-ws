@@ -515,4 +515,10 @@ app.post('/save-google-actual-roas', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/copy-debters', bodyParser.json(), function (req, res) {
+  debterRuleFileService.copyGroups(connection, req.body, (msg) => {
+    res.json({ msg: msg });
+  });
+});
+
 
