@@ -12,7 +12,7 @@ class orderService {
 
     getDataCount(connection, request, resultsCallback) {
         var SQL = this.buildSql(request, "show");
-        connection.query(SQL, (err, rows, fields) => {
+        connection.query(SQL, (error, results) => {
             resultsCallback(results[0]["TOTAL_RECORDS"]);
         });
     }
