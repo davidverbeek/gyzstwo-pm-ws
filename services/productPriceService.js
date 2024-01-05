@@ -345,16 +345,22 @@ class productPriceService {
                 let i = 1;
                 let condition_making_new = '';
                 let condition_making = '';
-                for (i = 1; i <= 2; i++) {
-                    let condition = 'condition' + i;
-                    condition_making = this.createTextFilterSql(key, item[condition]);
-                    if (condition_making_new != '') {
-                        condition_making_new = condition_making_new + ' ' + item.operator + ' ' + condition_making;
-                    } else {
-                        condition_making_new = condition_making;
+                const result_text = this.countKeysMatchingString(item, 'condition');
+
+                if (result_text == 0) {
+                    return '(' + this.createTextFilterSql(key, item) + ')';
+                } else {
+                    for (i = 1; i <= 2; i++) {
+                        let condition = 'condition' + i;
+                        condition_making = this.createTextFilterSql(key, item[condition]);
+                        if (condition_making_new != '') {
+                            condition_making_new = condition_making_new + ' ' + item.operator + ' ' + condition_making;
+                        } else {
+                            condition_making_new = condition_making;
+                        }
                     }
+                    return '(' + condition_making_new + ')';
                 }
-                return condition_making_new;
             case 'number':
                 let j = 1;
                 let condition_making_new_j = '';
@@ -362,7 +368,7 @@ class productPriceService {
                 const result = this.countKeysMatchingString(item, 'condition');
 
                 if (result == 0) {
-                    return this.createNumberFilterSql(key, item);
+                    return '(' + this.createNumberFilterSql(key, item) + ')';
                 } else {
                     for (j = 1; j <= 2; j++) {
                         let condition = 'condition' + j;
@@ -374,7 +380,7 @@ class productPriceService {
                             condition_making_new_j = condition_making_j;
                         }
                     }
-                    return condition_making_new_j;
+                    return '(' + condition_making_new_j + ')';
                 }
 
             case 'set':
@@ -385,27 +391,39 @@ class productPriceService {
     }
 
     createSetFilterSql(key, item) {
+        var ptable = ["highest_price", "lowest_price", "lp_diff_percentage", "hp_diff_percentage"];
+        var col_prefix = "pmd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "mktpr.";
+        }
+
         var allValues = (item.values).join('","');
-        return key + ' IN ("' + allValues + '")';
+        return col_prefix + key + ' IN ("' + allValues + '")';
     }
 
     createNumberFilterSql(key, item) {
         //console.log(key + "===" + item.type);
+
+        var ptable = ["highest_price", "lowest_price", "lp_diff_percentage", "hp_diff_percentage"];
+        var col_prefix = "pmd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "mktpr.";
+        }
         switch (item.type) {
             case 'equals':
-                return key + ' = ' + item.filter;
+                return col_prefix + key + ' = ' + item.filter;
             case 'notEqual':
-                return key + ' != ' + item.filter;
+                return col_prefix + key + ' != ' + item.filter;
             case 'greaterThan':
-                return key + ' > ' + item.filter;
+                return col_prefix + key + ' > ' + item.filter;
             case 'greaterThanOrEqual':
-                return key + ' >= ' + item.filter;
+                return col_prefix + key + ' >= ' + item.filter;
             case 'lessThan':
-                return key + ' < ' + item.filter;
+                return col_prefix + key + ' < ' + item.filter;
             case 'lessThanOrEqual':
-                return key + ' <= ' + item.filter;
+                return col_prefix + key + ' <= ' + item.filter;
             case 'inRange':
-                return '(' + key + ' >= ' + item.filter + ' and ' + key + ' <= ' + item.filterTo + ')';
+                return '(' + col_prefix + key + ' >= ' + item.filter + ' and ' + col_prefix + key + ' <= ' + item.filterTo + ')';
             default:
                 console.log('unknown number filter type: ' + item.type);
                 return 'true';
@@ -414,22 +432,25 @@ class productPriceService {
 
 
     createTextFilterSql(key, item) {
+        var ptable = ["highest_price", "lowest_price", "lp_diff_percentage", "hp_diff_percentage"];
+        var col_prefix = "pmd.";
+        if (ptable.includes(key)) {
+            var col_prefix = "mktpr.";
+        }
         switch (item.type) {
             case 'equals':
-                return key + ' = "' + item.filter + '"';
+                return col_prefix + key + ' = "' + item.filter + '"';
             case 'notEqual':
-                return key + ' != "' + item.filter + '"';
+                return col_prefix + key + ' != "' + item.filter + '"';
             case 'contains':
-                return key + ' like "%' + item.filter + '%"';
+                return col_prefix + key + ' like "%' + item.filter + '%"';
             case 'notContains':
-                return key + ' not like "%' + item.filter + '%"';
+                return col_prefix + key + ' not like "%' + item.filter + '%"';
             case 'startsWith':
-                return key + ' like "' + item.filter + '%"';
+                return col_prefix + key + ' like "' + item.filter + '%"';
             case 'endsWith':
-                return key + ' like "%' + item.filter + '"';
+                return col_prefix + key + ' like "%' + item.filter + '"';
             default:
-
-
                 console.log('unknown text filter type: ' + item.type);
                 return 'true';
         }
@@ -458,7 +479,6 @@ class productPriceService {
                 whereParts.push(that.createFilterSql(key, item));
             });
         }
-
         var whereClause = "";
         if (whereParts.length > 0) {
             whereClause = whereParts.join(' AND ');
