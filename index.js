@@ -243,13 +243,16 @@ app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
 });
 
 app.post('/catpro-products', bodyParser.json(), function (req, res) {
-  connection.query("SELECT distinct product_id FROM price_management_catpro where category_id IN (" + req.body + ")", (err, rows, fields) => {
-    if (err) {
-      return res.status(501).json({ message: 'Something went wrong' + err });
-    } else {
-      return res.status(200).json({ products_of_cats: rows });
+    if (req.body == "") {
+        return res.status(200).json({ message: 'categories are not given' });
     }
-  })
+    connection.query("SELECT distinct pmd.product_id FROM price_management_data as pmd INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = pmd.product_id where pmcp.category_id IN (" + req.body + ")", (err, rows, fields) => {
+        if (err) {
+            return res.status(501).json({ message: 'Something went wrong' + err });
+        } else {
+            return res.status(200).json({ products_of_cats: rows });
+        }
+    })
 });
 
 app.post('/dbt-rules-cats', bodyParser.json(), function (req, res) {
