@@ -255,7 +255,7 @@ class productPriceService {
             }
         }
 
-        resultsCallback("done");
+        resultsCallback(total_products);
 
 
     }

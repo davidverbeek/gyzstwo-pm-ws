@@ -251,6 +251,7 @@ class bolMinimumService {
 
     saveBolDeliveryTime(connection, request, resultsCallback) {
         const chunk_size = 10000;
+        var total_products = request.length;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
         var allCols = ["product_id", "ec_deliverytime", "updated_date_time"];
         //var totalUpdated = Array();
@@ -283,11 +284,12 @@ class bolMinimumService {
             return x + y;
         }, 0); */
 
-        resultsCallback("done");
+        resultsCallback(total_products);
     }
 
     saveBolDeliveryTimeBE(connection, request, resultsCallback) {
         const chunk_size = 10000;
+        var total_products = request.length;
         const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
         var allCols = ["product_id", "ec_deliverytime_be", "updated_date_time"];
         //var totalUpdated = Array();
@@ -314,7 +316,7 @@ class bolMinimumService {
             });
         }
 
-        resultsCallback("done");
+        resultsCallback(total_products);
     }
 
 
