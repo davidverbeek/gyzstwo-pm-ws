@@ -49,7 +49,7 @@ class productPriceService {
             resultsCallback("done");
         });
     }
-
+    /*
     savePriceData(connection, request, resultsCallback) {
 
         const chunk_size = 1000;
@@ -157,6 +157,7 @@ class productPriceService {
         }
         resultsCallback("done");
     }
+    */
 
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
