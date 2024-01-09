@@ -27,7 +27,7 @@ class liveRoasService {
         const selectSql = this.createSelectSql(request);
         var category_join = "";
         if ((request.cats).length > 0) {
-            category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = rc.product_id "
+            category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = r.product_id "
         }
         const fromSql = " FROM roas AS r LEFT JOIN price_management_data AS pmd ON pmd.product_id = r.product_id " + category_join + "";
         const whereSql = this.createWhereSql(request);
@@ -100,7 +100,7 @@ class liveRoasService {
 
     createNumberFilterSql(key, item) {
         var ptable = ["supplier_type", "name", "merk", "categories"];
-        var col_prefix = "rc.";
+        var col_prefix = "r.";
         if (ptable.includes(key)) {
             var col_prefix = "pmd.";
         }
@@ -129,7 +129,7 @@ class liveRoasService {
     createTextFilterSql(key, item) {
 
         var ptable = ["supplier_type", "name", "merk", "categories"];
-        var col_prefix = "rc.";
+        var col_prefix = "r.";
         if (ptable.includes(key)) {
             var col_prefix = "pmd.";
         }

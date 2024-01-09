@@ -25,8 +25,12 @@ class revenueService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
+        var category_join = "";
+        if ((request.cats).length > 0) {
+            category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = rd.product_id "
+        }
 
-        const fromSql = " FROM gyzsrevenuedata AS rd LEFT JOIN price_management_data AS pmd ON pmd.product_id = rd.product_id";
+        const fromSql = " FROM gyzsrevenuedata AS rd LEFT JOIN price_management_data AS pmd ON pmd.product_id = rd.product_id " + category_join + "";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -44,7 +48,7 @@ class revenueService {
 
     buildsqlcount(fromSql, whereSql) {
         var countsql = "";
-        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+        return countsql = "SELECT COUNT(DISTINCT rd.product_id) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
     }
 
     getAllRevenue(connection, request, resultsCallback) {
@@ -71,7 +75,7 @@ class revenueService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select DISTINCT rd.*, pmd.supplier_type, pmd.name, pmd.merk';
+        return ' select DISTINCT rd.*, pmd.supplier_type, pmd.name, pmd.merk,pmd.categories, pmd.supplier_type';
     }
 
     createFilterSql(key, item) {
@@ -170,10 +174,24 @@ class revenueService {
             });
         }
 
-        if (whereParts.length > 0) {
+        /* if (whereParts.length > 0) {
             return ' where ' + whereParts.join(' and ');
         } else {
             return '';
+        } */
+        var whereClause = "";
+
+        if (whereParts.length > 0) {
+            whereClause = whereParts.join(' AND ');
+            whereClause += ' AND';
+        }
+        if ((request.cats).length > 0) {
+            whereClause += ' pmcp.category_id IN (' + request.cats + ') AND';
+        }
+        if (whereClause == "") {
+            return '';
+        } else {
+            return 'where ' + whereClause.replace(/ AND$/, '') + '';
         }
     }
 
