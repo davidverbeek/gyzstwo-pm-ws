@@ -284,7 +284,8 @@ class productPriceService {
         if ((request.cats).length > 0) {
             category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = pmd.product_id "
         }
-        const fromSql = " FROM price_management_data AS pmd " + category_join + "";
+
+        const fromSql = " FROM price_management_data AS pmd " + category_join + "LEFT JOIN bigshopper_prices AS mktpr ON mktpr.product_id = pmd.product_id" + " ";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -332,8 +333,8 @@ class productPriceService {
                 "pmd.group_" + cust_group + "_margin_on_selling_price",
                 "pmd.group_" + cust_group + "_discount_on_grossprice_b_on_deb_selling_price");
         }
-
-        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + '';
+        const bs_cols = "CASE WHEN mktpr.lowest_price IS NOT NULL THEN mktpr.lowest_price  ELSE '--- ' END AS lowest_price " + ',' + "CASE WHEN mktpr.highest_price IS NOT NULL THEN mktpr.highest_price ELSE '---' END AS highest_price" + ',' + "CASE WHEN mktpr.lp_diff_percentage IS NOT NULL THEN mktpr.lp_diff_percentage ELSE '---' END AS lp_diff_percentage" + ',' + "CASE WHEN mktpr.hp_diff_percentage IS NOT NULL THEN mktpr.hp_diff_percentage ELSE '---' END AS hp_diff_percentage" + ',' + "CASE WHEN mktpr.price_competition_score IS NOT NULL THEN mktpr.price_competition_score ELSE '---' END AS price_competition_score" + ',' + "CASE WHEN mktpr.position IS NOT NULL THEN mktpr.position ELSE '---' END AS position" + ',' + "CASE WHEN mktpr.number_competitors IS NOT NULL THEN mktpr.number_competitors ELSE '---' END AS number_competitors" + ',' + "CASE WHEN mktpr.productset_incl_dispatch IS NOT NULL THEN mktpr.productset_incl_dispatch ELSE '---' END AS productset_incl_dispatch" + "," + "CASE WHEN mktpr.price_of_the_next_excl_shipping IS NOT NULL THEN mktpr.price_of_the_next_excl_shipping ELSE '---' END AS price_of_the_next_excl_shipping";
+        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ',' + bs_cols + '';
     }
 
     createFilterSql(key, item) {
@@ -735,6 +736,222 @@ class productPriceService {
 
         return count;
     }
-}
 
+
+    updateToBsOptions(connection, request, resultsCallback) {
+        let product_to_update_arr = request.selected_rows;
+        let all_selected_data = [];
+        let updated_product_ids = [];
+        let in_sku_arr = [];
+
+        let from = "From Multiple Select";
+        let notify_this = 0;
+        let response_data = [];
+        response_data.push({ 'msg': 'No records available to update' });
+        response_data.push({ 'type': 'info' });
+
+        if (product_to_update_arr.length) {
+            for (const row_index in product_to_update_arr) {
+                const row = product_to_update_arr[row_index];
+                let new_selling_price = 0.0000;
+                let check_continue_1 = 0;
+                let x = new Number(row["bigshopper_highest_price"]);
+                let y = new Number(row["bigshopper_lowest_price"]);
+
+                if (request.bs_price_option_checked == 'lowest_price') {
+                    if (row["bigshopper_lowest_price"] == "---" || row["bigshopper_lowest_price"] == 0.0000) {
+                        check_continue_1 = 1;
+                        continue;
+                    } else {
+                        new_selling_price = row["bigshopper_lowest_price"];
+                    }
+                } else if (request.bs_price_option_checked == 'highest_price') {
+                    if (row["bigshopper_highest_price"] == "---" || row["bigshopper_highest_price"] == 0.0000) {
+                        check_continue_1 = 1;
+                        continue;
+                    } else {
+                        new_selling_price = row["bigshopper_highest_price"];
+                    }
+                } else if (request.bs_price_option_checked == 'between_bs') {
+                    if ((row["bigshopper_lowest_price"] == "---" || row["bigshopper_lowest_price"] == 0.0000) && (row["bigshopper_highest_price"] == "---" || row["bigshopper_highest_price"] == 0.0000)) {
+                        check_continue_1 = 1;
+                        continue;
+                    } else {
+                        new_selling_price = (x + y) / 2;
+                    }
+                } else if (request.bs_price_option_checked == 'percentage_bs') {
+                    if (request.expression[2] == 'bs_percent_lp' && (row.bigshopper_lowest_price == "---" || row.bigshopper_lowest_price == 0.0000) && (request.expression[2] == 'bs_percent_hp' && row["bigshopper_highest_price"] == "---" || row["bigshopper_highest_price"] == 0.0000)) {
+                        check_continue_1 = 1;
+                        continue;
+                    } else {
+                        let v = [];
+                        v.push({ "bigshopper_highest_price": x });
+                        v.push({ "bigshopper_lowest_price": y });
+                        new_selling_price = this.calculate_expression_sp(request.expression, v);
+                    }
+                } else if (request.bs_price_option_checked == 'equal_to_next_price') {
+                    if (row["price_of_the_next_excl_shipping"] == "---" || row["price_of_the_next_excl_shipping"] == 0.0000) {
+                        check_continue_1 = 1;
+                        continue;
+                    } else {
+                        new_selling_price = row["price_of_the_next_excl_shipping"];
+                    }
+                } else if (request.bs_price_option_checked == 'percent_next_price') {
+                    if (row["price_of_the_next_excl_shipping"] == "---" || row["price_of_the_next_excl_shipping"] == 0.0000) {
+                        check_continue_1 = 1;
+                        continue;
+                    } else {
+                        let v = [];
+                        let z = new Number(row["price_of_the_next_excl_shipping"]);
+                        v.push({ "price_of_the_next_excl_shipping": z });
+                        new_selling_price = this.calculate_expression_sp(request.expression, v, 'next_price');
+                    }
+                }
+
+                if (new_selling_price == row["selling_price"]) {
+                    continue;
+                }
+                if (new_selling_price <= row['buying_price']) {
+                    notify_this++;
+                    continue;
+                }
+
+                let webshop_selling_price = row["gyzs_selling_price"];
+                let pmd_buying_price = row["buying_price"];
+                let supplier_gross_price = (row["supplier_gross_price"] == 0 ? 1 : row["supplier_gross_price"]);
+
+                let percentage_increase = this.roundValue(((new_selling_price - webshop_selling_price) / webshop_selling_price) * 100);
+                let profit_margin = this.roundValue(((new_selling_price - pmd_buying_price) / pmd_buying_price) * 100);
+                let profit_margin_sp = this.roundValue(((new_selling_price - pmd_buying_price) / new_selling_price) * 100);
+                let discount_percentage = this.roundValue((1 - (new_selling_price / supplier_gross_price)) * 100);
+
+                // set history fields and PMD fields to update
+                all_selected_data.push({
+                    'selling_price': new_selling_price, 'profit_margin_bp': profit_margin, 'profit_margin_sp': profit_margin_sp, 'discount_on_gross': discount_percentage, 'percentage_increase': percentage_increase, 'product_id': row["product_id"], 'sku': row["sku"],
+                    'old_net_unit_price': row["webshop_buying_price"], 'old_gross_unit_price': row["webshop_supplier_gross_price"], 'old_idealeverpakking': row["webshop_idealeverpakking"], 'old_afwijkenidealeverpakking': row["webshop_afwijkenidealeverpakking"], 'old_buying_price': row["webshop_buying_price"], 'old_selling_price': row["gyzs_selling_price"], 'new_net_unit_price': pmd_buying_price, 'new_gross_unit_price': row["supplier_gross_price"], 'new_idealeverpakking': row["idealeverpakking"], 'new_afwijkenidealeverpakking': row["afwijkenidealeverpakking"], 'new_buying_price': pmd_buying_price, 'new_selling_price': new_selling_price
+                });
+
+                updated_product_ids.push(row['product_id']);
+                in_sku_arr[row['sku']] = row['sku'];
+
+            }//end loop
+
+            // console.log(all_selected_data);all_selected_data.length
+
+            if (all_selected_data.length) {
+                response_data.splice(0);
+                let total_rec = this.bulkUpdateProducts(connection, "webshopprice", all_selected_data, from, "Selling Price");
+                let updated_recs = [];
+                updated_recs.push(total_rec);
+                if (notify_this) {
+                    updated_recs.push(notify_this);
+                    response_data.push({ 'msg': updated_recs.join('_') });
+                } else {
+                    response_data.push({ 'msg': "Updated " + updated_recs[0] + " records." });
+                }
+            } else {
+                if (notify_this > 0) {
+                    response_data.splice(0);
+                    response_data.push({ 'msg': "Notify_" + notify_this });
+                }
+            }
+            //console.log(response_data);
+
+        }
+        resultsCallback(response_data);
+    }
+
+    roundValue(originalNumber, scale = 4) {
+        if (isNaN(originalNumber) || isNaN(scale) || scale < 0) {
+            return NaN; // Handle invalid inputs
+        }
+
+        const roundedNumber = Number(originalNumber.toFixed(scale));
+        return roundedNumber;
+    }
+
+    bulkUpdateProducts(connection, type, data, log_type, update_type) {
+        const chunk_size = 1000;
+        let total_updated_records = 0;
+        const chunk_data = Array.from({ length: Math.ceil(data.length / chunk_size) }).map(() => data.splice(0, chunk_size));
+        //console.log(chunk_data);
+
+        if (chunk_data.length) {
+            for (const chunk_index in chunk_data) {
+                let chunk_values = chunk_data[chunk_index]; console.log(chunk_values.length);
+                let all_col_data = [];
+                let updated_product_ids = [];
+                let all_history_data = [];
+                let fields_changed = [];
+
+                if (type == "webshopprice") {
+                    let sql = "INSERT INTO price_management_data (product_id, sku, selling_price, profit_percentage, profit_percentage_selling_price, percentage_increase, discount_on_gross_price) VALUES ";
+                    let history_sql = "INSERT INTO price_management_history (product_id,old_net_unit_price,old_gross_unit_price,old_idealeverpakking,old_afwijkenidealeverpakking,old_buying_price,old_selling_price,new_net_unit_price,new_gross_unit_price,new_idealeverpakking,new_afwijkenidealeverpakking,new_buying_price,new_selling_price,updated_date_time,updated_by,is_viewed,fields_changed,buying_price_changed) VALUES ";
+
+                    for (const key in chunk_values) {
+                        let chunk_value = chunk_values[key];
+                        all_col_data.push("('" + chunk_value.product_id + "', '" + chunk_value.sku + "', '" + chunk_value.selling_price + "', '" + chunk_value.profit_margin_bp + "', '" + chunk_value.profit_margin_sp + "', '" + chunk_value.percentage_increase + "', '" + chunk_value.discount_on_gross + "')");
+
+                        fields_changed.push("new_selling_price");
+                        let buying_price_changed = 0;
+                        all_history_data.push("('" + chunk_value['product_id'] + "', '" + chunk_value['old_net_unit_price'] + "', '" + chunk_value['old_gross_unit_price'] + "', '" + chunk_value['old_idealeverpakking'] + "', '" + chunk_value['old_afwijkenidealeverpakking'] + "', '" + chunk_value['old_buying_price'] + "', '" + chunk_value['old_selling_price'] + "','" + chunk_value['new_net_unit_price'] + "', '" + chunk_value['new_gross_unit_price'] + "', '" + chunk_value['new_idealeverpakking'] + "', '" + chunk_value['new_afwijkenidealeverpakking'] + "', '" + chunk_value['new_buying_price'] + "', '" + chunk_value['new_selling_price'] + "',now(),'Price Management','No','" + JSON.stringify(fields_changed) + "','" + buying_price_changed + "')");
+                        updated_product_ids.push(chunk_value.product_id);
+                        total_updated_records++;
+                    }
+                    sql += all_col_data.join(", ") + " ON DUPLICATE KEY UPDATE selling_price = VALUES(selling_price),profit_percentage = VALUES(profit_percentage),profit_percentage_selling_price = VALUES(profit_percentage_selling_price),percentage_increase = VALUES(percentage_increase),discount_on_gross_price = VALUES(discount_on_gross_price)";
+
+                    connection.query(sql, (error, results) => {
+                        history_sql += all_history_data.join(", ");
+                        if (error) {
+                            pricelogger.error("Bulk Update Selling Price Error (" + log_type + "):" + error.message);
+                        } else {
+                            connection.query(history_sql, (error, results) => {
+                                if (error) {
+                                    pricelogger.error("History Update Bulk Selling Price Error (" + log_type + "):" + error.message);
+                                }
+                                pricelogger.info("Bulk Updated " + update_type + " Chunk (" + chunk_index + ") : " + chunk_values.length + " Records.");
+                                this.changeUpdateStatus(connection, updated_product_ids.join(','));
+                            });
+                        }
+                    });
+                }
+            }
+        }
+        return total_updated_records;
+    }//end bulkUpdateProducts()
+
+    changeUpdateStatus(conn, product_id) {
+        let change_status = "UPDATE price_management_data SET is_updated = '1' WHERE product_id IN (" + product_id + ")";
+        conn.query(change_status);
+    }
+
+
+    calculate_expression_sp(expression, v, subtype = 'bigshopper') {
+        let new_selling_price = 0;
+        let bs_percent = expression[0];
+        let bs_more_less = expression[1];
+        let bs_price_type = expression[2];
+        if (subtype == 'bigshopper') {
+            if (bs_more_less == 'more' && bs_price_type == 'bs_percent_hp') {
+                new_selling_price = v[0].bigshopper_highest_price + ((bs_percent * v[0].bigshopper_highest_price) / 100);
+            } else if (bs_more_less == 'more' && bs_price_type == 'bs_percent_lp') {
+                new_selling_price = v[1].bigshopper_lowest_price + ((bs_percent * v[1].bigshopper_lowest_price) / 100);
+            } else if (bs_more_less == 'less' && bs_price_type == 'bs_percent_lp') {
+                new_selling_price = v[1].bigshopper_lowest_price - ((bs_percent * v[1].bigshopper_lowest_price) / 100);
+            } else {
+                new_selling_price = v[0].bigshopper_highest_price - ((bs_percent * v[0].bigshopper_highest_price) / 100);
+            }
+        } else {
+            let calculate_percentage_np = (v[0].price_of_the_next_excl_shipping * bs_percent) / 100;
+            if (bs_more_less == 'more') {
+                //removed roundvalue
+                new_selling_price = v[0].price_of_the_next_excl_shipping + calculate_percentage_np;
+            } else {
+                new_selling_price = v[0].price_of_the_next_excl_shipping - calculate_percentage_np;
+            }
+        }
+
+        return new_selling_price;
+    }
+}
 module.exports = new productPriceService();
