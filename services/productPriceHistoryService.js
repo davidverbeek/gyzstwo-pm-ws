@@ -2,7 +2,6 @@ class productPriceHistoryService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
-        //console.log(SQL);
         connection.query(SQL, (error, results) => {
             const rowCount = this.getRowCount(request, results);
             const resultsForPage = this.cutResultsToPageSize(request, results);

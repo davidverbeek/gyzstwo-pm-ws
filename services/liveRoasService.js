@@ -1,9 +1,13 @@
-class bolMinimumService {
+class liveRoasService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
         //console.log(SQL);
         connection.query(SQL, (error, results) => {
+            if (error) {
+                //errorlogger.error(error.message);
+            }
+
             const rowCount = this.getRowCount(request, results);
             const resultsForPage = this.cutResultsToPageSize(request, results);
             const currentSql = SQL;
@@ -21,8 +25,11 @@ class bolMinimumService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-
-        const fromSql = " FROM price_management_bol_minimum AS pmbm LEFT JOIN price_management_ec_deliverytime AS pmecdtime ON pmecdtime.option_id = pmbm.ec_deliverytime LEFT JOIN price_management_ec_deliverytime_be AS pmecdtimebe ON pmecdtimebe.option_id = pmbm.ec_deliverytime_be";
+        var category_join = "";
+        if ((request.cats).length > 0) {
+            category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = r.product_id "
+        }
+        const fromSql = " FROM roas AS r LEFT JOIN price_management_data AS pmd ON pmd.product_id = r.product_id " + category_join + "";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -34,13 +41,20 @@ class bolMinimumService {
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
+            //console.log(SQL);
             return SQL;
         }
     }
 
     buildsqlcount(fromSql, whereSql) {
         var countsql = "";
-        return countsql = "SELECT COUNT(*) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+        return countsql = "SELECT COUNT(DISTINCT r.product_id) AS TOTAL_RECORDS " + fromSql + " " + whereSql + "";
+    }
+
+    getAllRoas(connection, request, resultsCallback) {
+        connection.query(request, (error, results) => {
+            resultsCallback(results);
+        });
     }
 
     createSelectSql(request) {
@@ -61,7 +75,7 @@ class bolMinimumService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select pmbm.*, pmecdtime.option_value AS ec_deliverytime_text, pmecdtimebe.option_value AS ec_deliverytime_be_text';
+        return ' select DISTINCT r.product_id, r.sku, r.carrier_level, r.total_orders, r.roas_target, r.roas_per_cat_per_brand, r.end_roas, r.roas_genereated_date, r.roas_bol_status, pmd.name, pmd.merk, pmd.categories, pmd.supplier_type';
     }
 
     createFilterSql(key, item) {
@@ -85,22 +99,27 @@ class bolMinimumService {
     }
 
     createNumberFilterSql(key, item) {
-        console.log(key + "===" + item.type);
+        var ptable = ["supplier_type", "name", "merk", "categories"];
+        var col_prefix = "r.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
+
         switch (item.type) {
             case 'equals':
-                return key + ' = ' + item.filter;
+                return col_prefix + key + ' = ' + item.filter;
             case 'notEqual':
-                return key + ' != ' + item.filter;
+                return col_prefix + key + ' != ' + item.filter;
             case 'greaterThan':
-                return key + ' > ' + item.filter;
+                return col_prefix + key + ' > ' + item.filter;
             case 'greaterThanOrEqual':
-                return key + ' >= ' + item.filter;
+                return col_prefix + key + ' >= ' + item.filter;
             case 'lessThan':
-                return key + ' < ' + item.filter;
+                return col_prefix + key + ' < ' + item.filter;
             case 'lessThanOrEqual':
-                return key + ' <= ' + item.filter;
+                return col_prefix + key + ' <= ' + item.filter;
             case 'inRange':
-                return '(' + key + ' >= ' + item.filter + ' and ' + key + ' <= ' + item.filterTo + ')';
+                return '(' + col_prefix + key + ' >= ' + item.filter + ' and ' + col_prefix + key + ' <= ' + item.filterTo + ')';
             default:
                 console.log('unknown number filter type: ' + item.type);
                 return 'true';
@@ -108,19 +127,26 @@ class bolMinimumService {
     }
 
     createTextFilterSql(key, item) {
+
+        var ptable = ["supplier_type", "name", "merk", "categories"];
+        var col_prefix = "r.";
+        if (ptable.includes(key)) {
+            var col_prefix = "pmd.";
+        }
+
         switch (item.type) {
             case 'equals':
-                return key + ' = "' + item.filter + '"';
+                return col_prefix + key + ' = "' + item.filter + '"';
             case 'notEqual':
-                return key + ' != "' + item.filter + '"';
+                return col_prefix + key + ' != "' + item.filter + '"';
             case 'contains':
-                return key + ' like "%' + item.filter + '%"';
+                return col_prefix + key + ' like "%' + item.filter + '%"';
             case 'notContains':
-                return key + ' not like "%' + item.filter + '%"';
+                return col_prefix + key + ' not like "%' + item.filter + '%"';
             case 'startsWith':
-                return key + ' like "' + item.filter + '%"';
+                return col_prefix + key + ' like "' + item.filter + '%"';
             case 'endsWith':
-                return key + ' like "%' + item.filter + '"';
+                return col_prefix + key + ' like "%' + item.filter + '"';
             default:
                 console.log('unknown text filter type: ' + item.type);
                 return 'true';
@@ -150,11 +176,28 @@ class bolMinimumService {
             });
         }
 
-        if (whereParts.length > 0) {
+        /* if (whereParts.length > 0) {
             return ' where ' + whereParts.join(' and ');
         } else {
             return '';
+        } */
+
+        var whereClause = "";
+
+        if (whereParts.length > 0) {
+            whereClause = whereParts.join(' AND ');
+            whereClause += ' AND';
         }
+        if ((request.cats).length > 0) {
+            whereClause += ' pmcp.category_id IN (' + request.cats + ') AND';
+        }
+        if (whereClause == "") {
+            return '';
+        } else {
+            return 'where ' + whereClause.replace(/ AND$/, '') + '';
+        }
+
+
     }
 
     createGroupBySql(request) {
@@ -235,92 +278,6 @@ class bolMinimumService {
             return results;
         }
     }
-
-    getAllECDeliveryTimes(connection, request, resultsCallback) {
-        const SQL = "SELECT * FROM price_management_ec_deliverytime";
-        connection.query(SQL, (error, results) => {
-            resultsCallback(results);
-        });
-    }
-    getAllECDeliveryTimesBE(connection, request, resultsCallback) {
-        const SQL = "SELECT * FROM price_management_ec_deliverytime_be";
-        connection.query(SQL, (error, results) => {
-            resultsCallback(results);
-        });
-    }
-
-    saveBolDeliveryTime(connection, request, resultsCallback) {
-        const chunk_size = 10000;
-        var total_products = request.length;
-        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
-        var allCols = ["product_id", "ec_deliverytime", "updated_date_time"];
-        //var totalUpdated = Array();
-        for (const chunk_key in chunks) {
-            const value = chunks[chunk_key];
-            var uploadData = "";
-            var chunkStatus = Array();
-            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime,updated_date_time) VALUES ";
-            for (const chunk_data in value) {
-                uploadData += "(";
-                allCols.forEach((col) => {
-                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
-                });
-                uploadData = uploadData.replace(/,+$/, '');
-                uploadData += "),";
-            }
-            uploadData = uploadData.replace(/,+$/, '');
-            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime = VALUES(ec_deliverytime), updated_date_time = now()";
-            //totalUpdated.push(value.length);
-            connection.query(sql, (error, results) => {
-                if (error) {
-                    return console.error(error.message);
-                }
-
-            });
-        }
-
-        // Using reduce function to find the sum
-        /* let sum = totalUpdated.reduce(function (x, y) {
-            return x + y;
-        }, 0); */
-
-        resultsCallback(total_products);
-    }
-
-    saveBolDeliveryTimeBE(connection, request, resultsCallback) {
-        const chunk_size = 10000;
-        var total_products = request.length;
-        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
-        var allCols = ["product_id", "ec_deliverytime_be", "updated_date_time"];
-        //var totalUpdated = Array();
-        for (const chunk_key in chunks) {
-            const value = chunks[chunk_key];
-            var uploadData = "";
-            var chunkStatus = Array();
-            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime_be,updated_date_time) VALUES ";
-            for (const chunk_data in value) {
-                uploadData += "(";
-                allCols.forEach((col) => {
-                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
-                });
-                uploadData = uploadData.replace(/,+$/, '');
-                uploadData += "),";
-            }
-            uploadData = uploadData.replace(/,+$/, '');
-            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime_be = VALUES(ec_deliverytime_be), updated_date_time = now()";
-            connection.query(sql, (error, results) => {
-                if (error) {
-                    return console.error(error.message);
-                }
-
-            });
-        }
-
-        resultsCallback(total_products);
-    }
-
-
-
 }
 
-module.exports = new bolMinimumService();
+module.exports = new liveRoasService();
