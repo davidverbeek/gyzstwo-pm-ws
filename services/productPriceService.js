@@ -18,11 +18,8 @@ class productPriceService {
 
     getDataCount(connection, request, resultsCallback) {
         const SQL = this.buildSql(request, "show");
-        // console.log(SQL);
         connection.query(SQL, (error, results) => {
-            // console.log(results["TOTAL_RECORDS"]);
             resultsCallback(results[0]["TOTAL_RECORDS"]);
-            // resultsCallback(results["TOTAL_RECORDS"]);
         });
     }
 
@@ -288,7 +285,7 @@ class productPriceService {
             category_join = "INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = pmd.product_id "
         }
 
-        const fromSql = " FROM price_management_data AS pmd " + category_join + "LEFT JOIN bigshopper_prices AS mktpr ON mktpr.product_id = pmd.product_id" + " ";
+        const fromSql = " FROM price_management_data AS pmd " + category_join + "LEFT JOIN bigshopper_prices AS mktpr ON mktpr.product_id = pmd.product_id" + " " + "LEFT JOIN revenue_study_price_management AS rspm ON rspm.product_id = pmd.product_id" + " ";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -337,7 +334,12 @@ class productPriceService {
                 "pmd.group_" + cust_group + "_discount_on_grossprice_b_on_deb_selling_price");
         }
         const bs_cols = "CASE WHEN mktpr.lowest_price IS NOT NULL THEN mktpr.lowest_price  ELSE '---' END AS lowest_price " + ',' + "CASE WHEN mktpr.highest_price IS NOT NULL THEN mktpr.highest_price ELSE '---' END AS highest_price" + ',' + "CASE WHEN mktpr.lp_diff_percentage IS NOT NULL THEN mktpr.lp_diff_percentage ELSE '---' END AS lp_diff_percentage" + ',' + "CASE WHEN mktpr.hp_diff_percentage IS NOT NULL THEN mktpr.hp_diff_percentage ELSE '---' END AS hp_diff_percentage" + ',' + "CASE WHEN mktpr.price_competition_score IS NOT NULL THEN mktpr.price_competition_score ELSE '---' END AS price_competition_score" + ',' + "CASE WHEN mktpr.position IS NOT NULL THEN mktpr.position ELSE '---' END AS position" + ',' + "CASE WHEN mktpr.number_competitors IS NOT NULL THEN mktpr.number_competitors ELSE '---' END AS number_competitors" + ',' + "CASE WHEN mktpr.productset_incl_dispatch IS NOT NULL THEN mktpr.productset_incl_dispatch ELSE '---' END AS productset_incl_dispatch" + "," + "CASE WHEN mktpr.price_of_the_next_excl_shipping IS NOT NULL THEN mktpr.price_of_the_next_excl_shipping ELSE '---' END AS price_of_the_next_excl_shipping";
-        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ',' + bs_cols + '';
+        const rev_cols = "CASE WHEN (rspm.current_revenue IS NOT NULL && rspm.previous_revenue IS NOT NULL) THEN CONCAT(rspm.current_revenue,' == ',rspm.previous_revenue) ELSE CONCAT( ifnull(current_revenue,'00'),' == ',ifnull(previous_revenue,'00')) END AS compare_revenue_60";
+        const rev_cols_1 = "rspm.percentage_revenue AS percentage_revenue";
+        const rev_cols_2 = "CASE WHEN (rspm.current_revenue IS NOT NULL && rspm.last_year_current_revenue IS NOT NULL) THEN CONCAT(rspm.current_revenue,' == ',rspm.last_year_current_revenue) ELSE CONCAT( ifnull(current_revenue,00),' == ',ifnull(last_year_current_revenue,00)) END AS compare_revenue_year";
+        const rev_cols_3 = "rspm.last_year_percentage_revenue AS last_year_percentage_revenue";
+
+        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ',' + bs_cols + ',' + rev_cols + '' + ',' + rev_cols_1 + '' + ',' + rev_cols_2 + '' + ',' + rev_cols_3 + '';
     }
 
     createFilterSql(key, item) {
@@ -409,9 +411,12 @@ class productPriceService {
         //console.log(key + "===" + item.type);
 
         var ptable = ["highest_price", "lowest_price", "lp_diff_percentage", "hp_diff_percentage"];
+        var rev_table = ["current_revenue", "previous_revenue", "last_year_percentage_revenue", "percentage_revenue"];
         var col_prefix = "pmd.";
         if (ptable.includes(key)) {
-            var col_prefix = "mktpr.";
+            col_prefix = "mktpr.";
+        } else if (rev_table.includes(key)) {
+            col_prefix = "rspm.";
         }
         switch (item.type) {
             case 'equals':
@@ -483,6 +488,7 @@ class productPriceService {
                 whereParts.push(that.createFilterSql(key, item));
             });
         }
+
         var whereClause = "";
         if (whereParts.length > 0) {
             whereClause = whereParts.join(' AND ');
