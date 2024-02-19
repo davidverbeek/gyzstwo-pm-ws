@@ -1,4 +1,4 @@
-class productPriceHistoryService {
+class bolMinimumService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
@@ -9,7 +9,6 @@ class productPriceHistoryService {
             const currentSql = SQL;
             resultsCallback(resultsForPage, rowCount, currentSql);
         });
-        connection.query("UPDATE price_management_history SET is_viewed = 'Yes' WHERE product_id = '" + request.historyPid + "'");
     }
 
     getDataCount(connection, request, resultsCallback) {
@@ -22,7 +21,8 @@ class productPriceHistoryService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-        const fromSql = " FROM price_management_history";
+
+        const fromSql = " FROM price_management_bol_minimum AS pmbm LEFT JOIN price_management_ec_deliverytime AS pmecdtime ON pmecdtime.option_id = pmbm.ec_deliverytime LEFT JOIN price_management_ec_deliverytime_be AS pmecdtimebe ON pmecdtimebe.option_id = pmbm.ec_deliverytime_be";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -61,7 +61,7 @@ class productPriceHistoryService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select date_format(updated_date_time,"%Y-%m-%d") AS updated_date_time, old_net_unit_price, old_gross_unit_price, old_idealeverpakking, old_afwijkenidealeverpakking, old_buying_price, old_selling_price, new_net_unit_price, new_gross_unit_price, new_idealeverpakking, new_afwijkenidealeverpakking, new_buying_price, new_selling_price, updated_by, is_viewed, fields_changed';
+        return ' select pmbm.*, pmecdtime.option_value AS ec_deliverytime_text, pmecdtimebe.option_value AS ec_deliverytime_be_text';
     }
 
     createFilterSql(key, item) {
@@ -150,12 +150,10 @@ class productPriceHistoryService {
             });
         }
 
-        var history_filter = 'product_id = ' + request.historyPid + '';
-
         if (whereParts.length > 0) {
-            return ' where ' + whereParts.join(' and ') + ' and ' + history_filter + '';
+            return ' where ' + whereParts.join(' and ');
         } else {
-            return ' where product_id = ' + request.historyPid + '';
+            return '';
         }
     }
 
@@ -237,6 +235,90 @@ class productPriceHistoryService {
             return results;
         }
     }
+
+    getAllECDeliveryTimes(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_ec_deliverytime";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+    getAllECDeliveryTimesBE(connection, request, resultsCallback) {
+        const SQL = "SELECT * FROM price_management_ec_deliverytime_be";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
+    saveBolDeliveryTime(connection, request, resultsCallback) {
+        const chunk_size = 10000;
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+        var allCols = ["product_id", "ec_deliverytime", "updated_date_time"];
+        //var totalUpdated = Array();
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+            var uploadData = "";
+            var chunkStatus = Array();
+            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime,updated_date_time) VALUES ";
+            for (const chunk_data in value) {
+                uploadData += "(";
+                allCols.forEach((col) => {
+                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
+                });
+                uploadData = uploadData.replace(/,+$/, '');
+                uploadData += "),";
+            }
+            uploadData = uploadData.replace(/,+$/, '');
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime = VALUES(ec_deliverytime), updated_date_time = now()";
+            //totalUpdated.push(value.length);
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    return console.error(error.message);
+                }
+
+            });
+        }
+
+        // Using reduce function to find the sum
+        /* let sum = totalUpdated.reduce(function (x, y) {
+            return x + y;
+        }, 0); */
+
+        resultsCallback("done");
+    }
+
+    saveBolDeliveryTimeBE(connection, request, resultsCallback) {
+        const chunk_size = 10000;
+        const chunks = Array.from({ length: Math.ceil(request.length / chunk_size) }).map(() => request.splice(0, chunk_size));
+        var allCols = ["product_id", "ec_deliverytime_be", "updated_date_time"];
+        //var totalUpdated = Array();
+        for (const chunk_key in chunks) {
+            const value = chunks[chunk_key];
+            var uploadData = "";
+            var chunkStatus = Array();
+            var sql = "INSERT INTO price_management_bol_minimum (product_id,ec_deliverytime_be,updated_date_time) VALUES ";
+            for (const chunk_data in value) {
+                uploadData += "(";
+                allCols.forEach((col) => {
+                    uploadData += '"' + value[chunk_data][col] + '"' + ",";
+                });
+                uploadData = uploadData.replace(/,+$/, '');
+                uploadData += "),";
+            }
+            uploadData = uploadData.replace(/,+$/, '');
+            sql += "" + uploadData + " ON DUPLICATE KEY UPDATE ec_deliverytime_be = VALUES(ec_deliverytime_be), updated_date_time = now()";
+            connection.query(sql, (error, results) => {
+                if (error) {
+                    return console.error(error.message);
+                }
+
+            });
+        }
+
+        resultsCallback("done");
+    }
+
+
+
 }
 
-module.exports = new productPriceHistoryService();
+module.exports = new bolMinimumService();

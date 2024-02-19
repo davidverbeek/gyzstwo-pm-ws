@@ -4,3 +4,11 @@
 # db
 dbconfig.js
 
+# log
+/logs
+
+# googleroas
+/googleroas
+
+# env
+env.js

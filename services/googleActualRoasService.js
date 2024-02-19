@@ -1,4 +1,5 @@
-class productPriceHistoryService {
+var pricelogger = require("../priceLogger");
+class googleActualRoasService {
 
     getData(connection, request, resultsCallback) {
         const SQL = this.buildSql(request);
@@ -9,7 +10,6 @@ class productPriceHistoryService {
             const currentSql = SQL;
             resultsCallback(resultsForPage, rowCount, currentSql);
         });
-        connection.query("UPDATE price_management_history SET is_viewed = 'Yes' WHERE product_id = '" + request.historyPid + "'");
     }
 
     getDataCount(connection, request, resultsCallback) {
@@ -22,7 +22,8 @@ class productPriceHistoryService {
     buildSql(request, totalrecords = "") {
 
         const selectSql = this.createSelectSql(request);
-        const fromSql = " FROM price_management_history";
+
+        const fromSql = " FROM google_actual_roas";
         const whereSql = this.createWhereSql(request);
         const limitSql = this.createLimitSql(request);
 
@@ -34,6 +35,7 @@ class productPriceHistoryService {
             return SQLCOUNT;
         } else {
             const SQL = selectSql + fromSql + whereSql + groupBySql + orderBySql + limitSql;
+            //console.log(SQL);
             return SQL;
         }
     }
@@ -61,7 +63,7 @@ class productPriceHistoryService {
             return ' select ' + colsToSelect.join(', ');
         }
 
-        return ' select date_format(updated_date_time,"%Y-%m-%d") AS updated_date_time, old_net_unit_price, old_gross_unit_price, old_idealeverpakking, old_afwijkenidealeverpakking, old_buying_price, old_selling_price, new_net_unit_price, new_gross_unit_price, new_idealeverpakking, new_afwijkenidealeverpakking, new_buying_price, new_selling_price, updated_by, is_viewed, fields_changed';
+        return ' select *';
     }
 
     createFilterSql(key, item) {
@@ -85,7 +87,7 @@ class productPriceHistoryService {
     }
 
     createNumberFilterSql(key, item) {
-        console.log(key + "===" + item.type);
+        //console.log(key + "===" + item.type);
         switch (item.type) {
             case 'equals':
                 return key + ' = ' + item.filter;
@@ -150,12 +152,10 @@ class productPriceHistoryService {
             });
         }
 
-        var history_filter = 'product_id = ' + request.historyPid + '';
-
         if (whereParts.length > 0) {
-            return ' where ' + whereParts.join(' and ') + ' and ' + history_filter + '';
+            return ' where ' + whereParts.join(' and ');
         } else {
-            return ' where product_id = ' + request.historyPid + '';
+            return '';
         }
     }
 
@@ -237,6 +237,54 @@ class productPriceHistoryService {
             return results;
         }
     }
+
+    saveGoogleRoas(connection, request, resultsCallback) {
+        var insert_sql = "INSERT INTO roas_google (sku,valuta,vertoningen,klikken,ctr,gem_cpc,kosten,conversies,kosten_conversies,conv_percentage,actual_roas,conv_waarde) VALUES ";
+        var id = request[0];
+        var xlsData = request[1];
+        var dataString = "";
+
+        for (const data of xlsData) {
+
+            if (data[0] == "Item-ID") {
+                continue;
+            }
+            if (data[4]) { //CTR
+                data[4] = data[4] * 100;
+            }
+            if (data[9]) { //Conv. perc.
+                data[9] = data[9] * 100;
+            }
+            dataString += "('" + data[0] + "','" + data[1] + "','" + data[2] + "','" + data[3] + "','" + data[4] + "','" + data[5] + "','" + data[6] + "','" + data[7] + "','" + data[8] + "','" + data[9] + "','" + data[10] + "','" + data[11] + "'),";
+        }
+        dataString = dataString.replace(/,+$/, '');
+        pricelogger.info(dataString);
+
+        var truncate_sql = "TRUNCATE TABLE roas_google";
+
+        connection.query(truncate_sql, (terror, tresults) => {
+            if (terror) {
+                pricelogger.error(terror.message);
+            } else {
+                connection.query(insert_sql + dataString, (error, results) => {
+                    if (error) {
+                        pricelogger.error(error.message);
+                    } else {
+                        connection.query("UPDATE google_actual_roas SET active = '0'");
+                        connection.query("UPDATE google_actual_roas SET active = '1' WHERE id = '" + id + "'");
+                        resultsCallback("Activated Successfully. Processed " + xlsData.length + " rows");
+                    }
+                });
+            }
+        });
+
+
+
+
+
+
+    }
+
 }
 
-module.exports = new productPriceHistoryService();
+module.exports = new googleActualRoasService();
