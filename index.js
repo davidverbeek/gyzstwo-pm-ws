@@ -531,3 +531,22 @@ app.post('/bulk_bs_update_selling_price', bodyParser.json(), function (req, res)
   });
 });
 
+app.get('/bs_import_date', bodyParser.json(), function (req, res) {
+  productPriceService.getBsDate(connection, (msg) => {
+    //console.log(msg);
+    res.json({ msg });
+  });
+});
+
+app.get('/get_bigshopper_percentage', bodyParser.json(), function (req, res) {
+  productPriceService.updateBsPercent(connection, (msg) => {
+    res.json({ msg });
+  });
+});
+
+app.get('/get_productset_options', bodyParser.json(), function (req, res) {
+  productPriceService.getListOfProductSet(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
+

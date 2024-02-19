@@ -1035,5 +1035,120 @@ class productPriceService {
         return response_data;
     }
 
+    getBsDate(connection, resultsCallback) {
+        connection.query("SELECT bigshopper_xml_import_date FROM bigshopper_prices LIMIT 1", function (err, result, fields) {
+            if (err) throw err;
+            resultsCallback(result[0]['bigshopper_xml_import_date']);
+        });
+    };
+
+    updateBsPercent(connection, resultsCallback) {
+
+        let sql_bigshopper = "SELECT bs.lowest_price, bs.highest_price, bs.product_sku, bs.lp_diff_percentage, bs.hp_diff_percentage, pmd.selling_price, pmd.sku FROM price_management_data AS pmd INNER JOIN bigshopper_prices AS bs ON pmd.sku=bs.product_sku";
+        let col_data = [];
+        let read_insertion_error = '';
+        connection.query(sql_bigshopper, function (err, result, fields) {
+            if (err) throw err;
+
+            if (result.length == 0) {
+                console.log('No rows');
+            }
+
+            for (const row_index in result) {
+                const row = result[row_index];
+                let selling_price = row['selling_price'];
+                // if a product has zero selling price its lp_diff_percenated & hp_diff_percentage will not update
+                if (selling_price == 0) {
+                    continue;
+                }
+                let bigshopper_lp = row['lowest_price'];
+                let bigshopper_hp = row['highest_price'];
+                let sku = row['sku'];
+
+                let bigshopper_lp_diff_percent = this.roundValue(((bigshopper_lp - selling_price) / selling_price) * 100);
+                let bigshopper_hp_diff_percent = this.roundValue(((bigshopper_hp - selling_price) / selling_price) * 100);
+
+                if ((bigshopper_lp_diff_percent != row['lp_diff_percentage']) || (bigshopper_hp_diff_percent != row['hp_diff_percentage'])) {
+                    col_data.push({
+                        'sku': sku,
+                        'lp_diff_percentage': bigshopper_lp_diff_percent,
+                        'hp_diff_percentage': bigshopper_hp_diff_percent,
+                    });
+                }
+
+            }
+
+            if (col_data.length > 0) {
+                read_insertion_error = this.updatePercentage(connection, col_data);
+
+                if (read_insertion_error.length == 0) {
+                    resultsCallback("Successfully updated all products");
+                } else {
+                    resultsCallback("All but " + read_insertion_error.length + " chunks failed to update.");
+                }
+            } else {
+                resultsCallback('No products available to update');
+            }
+
+        }.bind(this));
+    };
+
+
+    updatePercentage(connection, products_diff_percentage_info) {
+
+        const chunk_size = 1000;
+
+        pricelogger.info("Total Updates:-" + products_diff_percentage_info.length + " Chunk Size:-" + chunk_size);
+        const chunks = Array.from({ length: Math.ceil(products_diff_percentage_info.length / chunk_size) }).map(() => products_diff_percentage_info.splice(0, chunk_size));
+
+        let pass_err = [];
+        for (const chunk_key in chunks) {
+            let update_bulk_sql = "UPDATE bigshopper_prices SET ";
+            let col_1 = "lp_diff_percentage = (CASE product_sku ";
+            let col_2 = "hp_diff_percentage = (CASE product_sku ";
+            let col_3 = "created_at = now()";
+            let in_part = " WHERE product_sku IN(";
+            let update_sku_list = [];
+            let c_d = chunks[chunk_key];
+
+            for (const key_avg in c_d) {
+                let get_product_sku = c_d[key_avg]['sku'];
+                let a = c_d[key_avg]['lp_diff_percentage'];
+                let b = c_d[key_avg]['hp_diff_percentage'];
+                col_1 += " WHEN '" + get_product_sku + "' THEN '" + a + "'";
+                col_2 += " WHEN '" + get_product_sku + "' THEN '" + b + "'";
+                update_sku_list.push(get_product_sku);
+            }
+            col_1 += " END)";
+            col_2 += " END)";
+
+            update_bulk_sql += col_1 + ', ';
+            update_bulk_sql += col_2 + ', ' + col_3;
+            update_bulk_sql += in_part + "'" + update_sku_list.join("', '") + "'";
+            update_bulk_sql += ')';
+
+            pricelogger.info("Processing Chunk " + chunk_key + ":-" + update_bulk_sql);
+            connection.query(update_bulk_sql, (error, results) => {
+                if (error) {
+                    pricelogger.error(error.message);
+                    pass_err.push("Erroneous Chunk " + chunk_key);
+                } else {
+                    pricelogger.info("Bulk Updated BS percentages: Chunk (" + chunk_key + ") : " + c_d.length + " Records.");
+                }
+            });
+
+        }
+        return pass_err;
+
+    }
+
+    getListOfProductSet(connection, request, resultsCallback) {
+        const SQL = "SELECT distinct bs.productset_incl_dispatch as productset FROM price_management_data AS pmd INNER JOIN bigshopper_prices AS bs ON bs.product_id = pmd.product_id";
+        connection.query(SQL, (error, results) => {
+            resultsCallback(results);
+        });
+    }
+
+
 }
 module.exports = new productPriceService();
