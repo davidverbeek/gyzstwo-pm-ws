@@ -81,7 +81,7 @@ class debterRuleService {
         var sql = "INSERT INTO price_management_debter_categories(category_ids,product_ids,customer_group, updated_at) VALUES ";
         var all_col_data = "('" + request.category_ids + "', '" + request.product_ids + "','" + request.customer_group + "' ,now())";
         sql += all_col_data;
-        sql += " ON DUPLICATE KEY UPDATE category_ids = VALUES(category_ids), customer_group = VALUES(customer_group), product_ids = VALUES(product_ids), updated_at = VALUES(updated_at)";
+        sql += " ON DUPLICATE KEY UPDATE category_ids = VALUES(category_ids), product_ids = VALUES(product_ids), updated_at = VALUES(updated_at)";
         connection.query(sql, (error, results) => {
             if (error) {
                 console.log(error.message);

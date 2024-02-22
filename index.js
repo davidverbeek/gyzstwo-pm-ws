@@ -243,16 +243,16 @@ app.post('/save-debter-rules', bodyParser.json(), function (req, res) {
 });
 
 app.post('/catpro-products', bodyParser.json(), function (req, res) {
-    if (req.body == "") {
-        return res.status(200).json({ message: 'categories are not given' });
+  if (req.body == "") {
+    return res.status(200).json({ message: 'categories are not given' });
+  }
+  connection.query("SELECT distinct pmd.product_id FROM price_management_data as pmd INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = pmd.product_id where pmcp.category_id IN (" + req.body + ")", (err, rows, fields) => {
+    if (err) {
+      return res.status(501).json({ message: 'Something went wrong' + err });
+    } else {
+      return res.status(200).json({ products_of_cats: rows });
     }
-    connection.query("SELECT distinct pmd.product_id FROM price_management_data as pmd INNER JOIN price_management_catpro AS pmcp ON pmcp.product_id = pmd.product_id where pmcp.category_id IN (" + req.body + ")", (err, rows, fields) => {
-        if (err) {
-            return res.status(501).json({ message: 'Something went wrong' + err });
-        } else {
-            return res.status(200).json({ products_of_cats: rows });
-        }
-    })
+  })
 });
 
 app.post('/dbt-rules-cats', bodyParser.json(), function (req, res) {
@@ -524,4 +524,29 @@ app.post('/copy-debters', bodyParser.json(), function (req, res) {
   });
 });
 
+app.post('/bulk_bs_update_selling_price', bodyParser.json(), function (req, res) {
+  //console.log(req.body);
+  productPriceService.updateToBsOptions(connection, req.body, (msg) => {
+    res.json({ msg });
+  });
+});
+
+app.get('/bs_import_date', bodyParser.json(), function (req, res) {
+  productPriceService.getBsDate(connection, (msg) => {
+    //console.log(msg);
+    res.json({ msg });
+  });
+});
+
+app.get('/get_bigshopper_percentage', bodyParser.json(), function (req, res) {
+  productPriceService.updateBsPercent(connection, (msg) => {
+    res.json({ msg });
+  });
+});
+
+app.get('/get_productset_options', bodyParser.json(), function (req, res) {
+  productPriceService.getListOfProductSet(connection, req.body, (msg) => {
+    res.send({ msg });
+  });
+});
 
