@@ -339,7 +339,10 @@ class productPriceService {
         const rev_cols_2 = "CASE WHEN (rspm.current_revenue IS NOT NULL && rspm.last_year_current_revenue IS NOT NULL) THEN CONCAT(rspm.current_revenue,' == ',rspm.last_year_current_revenue) ELSE CONCAT( ifnull(current_revenue,00),' == ',ifnull(last_year_current_revenue,00)) END AS compare_revenue_year";
         const rev_cols_3 = "rspm.last_year_percentage_revenue AS last_year_percentage_revenue";
 
-        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ',' + bs_cols + ',' + rev_cols + '' + ',' + rev_cols_1 + '' + ',' + rev_cols_2 + '' + ',' + rev_cols_3 + '';
+        const pm_vkpr_pp = "CAST(CASE WHEN pmd.afwijkenidealeverpakking = '0' THEN (pmd.selling_price/pmd.idealeverpakking) ELSE pmd.selling_price END AS DECIMAL (10 ,4)) AS pm_vkpr_per_piece";
+        const diff_pmvkpr_pp_bslp = "CAST(CASE WHEN (pmd.afwijkenidealeverpakking = '0') AND mktpr.lowest_price IS NOT NULL THEN ((((pmd.selling_price/pmd.idealeverpakking)- mktpr.lowest_price)/mktpr.lowest_price)*100) WHEN (pmd.afwijkenidealeverpakking = '1') AND mktpr.lowest_price IS NOT NULL THEN (((pmd.selling_price - mktpr.lowest_price)/mktpr.lowest_price)*100) ELSE '0' END AS DECIMAL (10 ,4)) AS diff_pmvkpr_pp_bslp";
+
+        return ' select DISTINCT pmd.product_id, pmd.supplier_type, pmd.name, pmd.sku, pmd.supplier_sku, pmd.eancode, pmd.merk, pmd.idealeverpakking, pmd.afwijkenidealeverpakking, pmd.categories, pmd.buying_price, pmd.selling_price, pmd.profit_percentage, pmd.profit_percentage_selling_price, pmd.discount_on_gross_price, pmd.percentage_increase, pmd.magento_status, pmd.gross_unit_price, CAST((1 - (pmd.net_unit_price / CASE WHEN (pmd.gross_unit_price = 0) THEN 1 ELSE (pmd.gross_unit_price) END )) * 100 AS DECIMAL (10 , 4 )) AS supplier_discount_gross_price, pmd.webshop_selling_price, pmd.net_unit_price, pmd.is_updated, pmd.is_updated_skwirrel, pmd.is_activated, pmd.webshop_net_unit_price, pmd.webshop_gross_unit_price, pmd.webshop_idealeverpakking, pmd.webshop_afwijkenidealeverpakking, pmd.webshop_buying_price, (SELECT COUNT(*) AS mag_updated_product_cnt FROM price_management_history WHERE product_id = pmd.product_id and is_viewed = "No" and updated_by = "Magento" and buying_price_changed = "1") AS mag_updated_product_cnt, ' + all_d_cols.toString() + ',' + bs_cols + ',' + rev_cols + '' + ',' + rev_cols_1 + '' + ',' + rev_cols_2 + '' + ',' + rev_cols_3 + ',' + pm_vkpr_pp + ',' + diff_pmvkpr_pp_bslp + ''
     }
 
     createFilterSql(key, item) {
@@ -417,7 +420,17 @@ class productPriceService {
             col_prefix = "mktpr.";
         } else if (rev_table.includes(key)) {
             col_prefix = "rspm.";
+        } else if (key == 'pm_vkpr_per_piece') {
+            col_prefix = 'CAST(CASE WHEN (pmd.afwijkenidealeverpakking = "0") THEN (pmd.selling_price/pmd.idealeverpakking) ELSE pmd.selling_price END AS DECIMAL(10,4))';
+            key = '';
+        } else if (key == 'diff_pmvkpr_pp_bslp') {
+            key = '';
+            let get_per_piece = '(pmd.selling_price/pmd.idealeverpakking)';
+            let top_part = get_per_piece + ' - mktpr.lowest_price';
+            let top_part_2 = 'pmd.selling_price - mktpr.lowest_price';
+            col_prefix = 'CAST(CASE WHEN (pmd.afwijkenidealeverpakking = "0" AND mktpr.lowest_price IS NOT NULL ) THEN (((' + top_part + ')/mktpr.lowest_price) * 100) WHEN (pmd.afwijkenidealeverpakking = "1" AND mktpr.lowest_price IS NOT NULL ) THEN (((' + top_part_2 + ')/mktpr.lowest_price) * 100) ELSE 0 END AS DECIMAL (10 , 4 ))';
         }
+
         switch (item.type) {
             case 'equals':
                 return col_prefix + key + ' = ' + item.filter;
@@ -437,6 +450,8 @@ class productPriceService {
                 console.log('unknown number filter type: ' + item.type);
                 return 'true';
         }
+
+
     }
 
 
@@ -488,6 +503,7 @@ class productPriceService {
                 whereParts.push(that.createFilterSql(key, item));
             });
         }
+
 
         var whereClause = "";
         if (whereParts.length > 0) {
